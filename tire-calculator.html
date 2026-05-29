@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>轮胎计算器 - Tire Calculator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #e63946;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(230, 57, 70, 0.3);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 1rem;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 968px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(230, 57, 70, 0.2);
+        }
+
+        .card h2 {
+            color: #e63946;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #b0b0b0;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0f3460;
+            border: 2px solid #1a1a2e;
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #e63946;
+            box-shadow: 0 0 0 3px rgba(230, 57, 70, 0.2);
+        }
+
+        .input-group input.error {
+            border-color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+
+        .btn-primary {
+            background: #e63946;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #d62839;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(230, 57, 70, 0.4);
+        }
+
+        .btn-secondary {
+            background: #0f3460;
+            color: #e0e0e0;
+            border: 2px solid #1a1a2e;
+        }
+
+        .btn-secondary:hover {
+            background: #16213e;
+            border-color: #e63946;
+        }
+
+        .presets-section {
+            margin-top: 20px;
+        }
+
+        .presets-section h3 {
+            color: #b0b0b0;
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+        }
+
+        .presets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 10px;
+        }
+
+        .preset-btn {
+            padding: 10px;
+            background: #0f3460;
+            border: 2px solid #1a1a2e;
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .preset-btn:hover {
+            background: #16213e;
+            border-color: #e63946;
+            transform: translateY(-2px);
+        }
+
+        .results-card {
+            grid-column: 1 / -1;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .result-item {
+            background: #0f3460;
+            padding: 16px;
+            border-radius: 8px;
+            border-left: 4px solid #e63946;
+        }
+
+        .result-label {
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .result-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #e0e0e0;
+        }
+
+        .result-change {
+            font-size: 0.9rem;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .positive {
+            color: #4caf50;
+        }
+
+        .negative {
+            color: #f44336;
+        }
+
+        .neutral {
+            color: #888;
+        }
+
+        .compatibility-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        .compatible {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+            border: 2px solid #4caf50;
+        }
+
+        .acceptable {
+            background: rgba(255, 152, 0, 0.2);
+            color: #ff9800;
+            border: 2px solid #ff9800;
+        }
+
+        .not-compatible {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+            border: 2px solid #f44336;
+        }
+
+        .tire-diagram {
+            margin: 30px 0;
+            text-align: center;
+        }
+
+        .tire-diagram h3 {
+            color: #b0b0b0;
+            margin-bottom: 20px;
+        }
+
+        svg {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .speed-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .speed-table th,
+        .speed-table td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid #1a1a2e;
+        }
+
+        .speed-table th {
+            background: #0f3460;
+            color: #e63946;
+            font-weight: 600;
+        }
+
+        .speed-table tr:hover {
+            background: rgba(230, 57, 70, 0.1);
+        }
+
+        .speed-error {
+            font-weight: 600;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #666;
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .card {
+                padding: 16px;
+            }
+
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .presets-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .speed-table {
+                font-size: 0.85rem;
+            }
+
+            .speed-table th,
+            .speed-table td {
+                padding: 8px 4px;
+            }
+        }
+
+        .calculate-btn {
+            width: 100%;
+            padding: 16px;
+            font-size: 1.2rem;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏁 轮胎计算器</h1>
+        <p class="subtitle">Tire Size Comparison Calculator</p>
+
+        <div class="main-grid">
+            <div class="card">
+                <h2>📏 原厂轮胎</h2>
+                
+                <div class="input-group">
+                    <label>轮胎宽度 (mm)</label>
+                    <input type="number" id="original-width" placeholder="例: 205" min="100" max="400">
+                </div>
+
+                <div class="input-group">
+                    <label>扁平比 (%)</label>
+                    <input type="number" id="original-ratio" placeholder="例: 55" min="20" max="80">
+                </div>
+
+                <div class="input-group">
+                    <label>轮毂直径 (英寸)</label>
+                    <input type="number" id="original-rim" placeholder="例: 16" min="10" max="24" step="0.5">
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-secondary" onclick="setAsOriginal()">📋 设为原厂</button>
+                    <button class="btn btn-primary" onclick="quickSet('original')">🎯 快速设置</button>
+                </div>
+
+                <div class="presets-section">
+                    <h3>常用尺寸预设</h3>
+                    <div class="presets-grid">
+                        <button class="preset-btn" onclick="setPreset('original', 195, 65, 15)">195/65R15</button>
+                        <button class="preset-btn" onclick="setPreset('original', 205, 55, 16)">205/55R16</button>
+                        <button class="preset-btn" onclick="setPreset('original', 215, 55, 17)">215/55R17</button>
+                        <button class="preset-btn" onclick="setPreset('original', 225, 45, 17)">225/45R17</button>
+                        <button class="preset-btn" onclick="setPreset('original', 225, 40, 18)">225/40R18</button>
+                        <button class="preset-btn" onclick="setPreset('original', 235, 45, 18)">235/45R18</button>
+                        <button class="preset-btn" onclick="setPreset('original', 245, 40, 18)">245/40R18</button>
+                        <button class="preset-btn" onclick="setPreset('original', 255, 35, 19)">255/35R19</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>🔄 新轮胎</h2>
+                
+                <div class="input-group">
+                    <label>轮胎宽度 (mm)</label>
+                    <input type="number" id="new-width" placeholder="例: 225" min="100" max="400">
+                </div>
+
+                <div class="input-group">
+                    <label>扁平比 (%)</label>
+                    <input type="number" id="new-ratio" placeholder="例: 45" min="20" max="80">
+                </div>
+
+                <div class="input-group">
+                    <label>轮毂直径 (英寸)</label>
+                    <input type="number" id="new-rim" placeholder="例: 17" min="10" max="24" step="0.5">
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-secondary" onclick="setAsNew()">📋 设为新胎</button>
+                    <button class="btn btn-primary" onclick="quickSet('new')">🎯 快速设置</button>
+                </div>
+
+                <div class="presets-section">
+                    <h3>常用尺寸预设</h3>
+                    <div class="presets-grid">
+                        <button class="preset-btn" onclick="setPreset('new', 195, 65, 15)">195/65R15</button>
+                        <button class="preset-btn" onclick="setPreset('new', 205, 55, 16)">205/55R16</button>
+                        <button class="preset-btn" onclick="setPreset('new', 215, 55, 17)">215/55R17</button>
+                        <button class="preset-btn" onclick="setPreset('new', 225, 45, 17)">225/45R17</button>
+                        <button class="preset-btn" onclick="setPreset('new', 225, 40, 18)">225/40R18</button>
+                        <button class="preset-btn" onclick="setPreset('new', 235, 45, 18)">235/45R18</button>
+                        <button class="preset-btn" onclick="setPreset('new', 245, 40, 18)">245/40R18</button>
+                        <button class="preset-btn" onclick="setPreset('new', 255, 35, 19)">255/35R19</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card results-card">
+                <h2>📊 计算结果</h2>
+                
+                <button class="btn btn-primary calculate-btn" onclick="calculate()">🔍 开始计算</button>
+
+                <div id="results" style="display: none;">
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <div class="result-label">原厂轮胎直径</div>
+                            <div class="result-value" id="original-diameter">-</div>
+                        </div>
+
+                        <div class="result-item">
+                            <div class="result-label">新轮胎直径</div>
+                            <div class="result-value" id="new-diameter">-</div>
+                        </div>
+
+                        <div class="result-item">
+                            <div class="result-label">直径变化</div>
+                            <div class="result-value" id="diameter-change">-</div>
+                            <div class="result-change" id="diameter-change-pct">-</div>
+                        </div>
+
+                        <div class="result-item">
+                            <div class="result-label">离地间隙变化</div>
+                            <div class="result-value" id="clearance-change">-</div>
+                        </div>
+                    </div>
+
+                    <div id="compatibility-section">
+                        <h3 style="color: #b0b0b0; margin-bottom: 10px;">兼容性建议</h3>
+                        <div id="compatibility-badge" class="compatibility-badge">-</div>
+                        <p id="compatibility-text" style="margin-top: 10px; color: #888;"></p>
+                    </div>
+
+                    <div class="tire-diagram">
+                        <h3>轮胎截面对比图</h3>
+                        <svg id="tire-svg" width="600" height="300" viewBox="0 0 600 300"></svg>
+                    </div>
+
+                    <div>
+                        <h3 style="color: #b0b0b0; margin-bottom: 15px;">速度表误差对比</h3>
+                        <table class="speed-table">
+                            <thead>
+                                <tr>
+                                    <th>表显速度 (km/h)</th>
+                                    <th>实际速度 (km/h)</th>
+                                    <th>速度误差</th>
+                                    <th>误差百分比</th>
+                                </tr>
+                            </thead>
+                            <tbody id="speed-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>⚠️ 本计算器仅供参考，更换轮胎请咨询专业技师</p>
+            <p>© 2024 Tire Calculator - Professional Tire Size Comparison Tool</p>
+        </div>
+    </div>
+
+    <script>
+        function setPreset(type, width, ratio, rim) {
+            if (type === 'original') {
+                document.getElementById('original-width').value = width;
+                document.getElementById('original-ratio').value = ratio;
+                document.getElementById('original-rim').value = rim;
+            } else {
+                document.getElementById('new-width').value = width;
+                document.getElementById('new-ratio').value = ratio;
+                document.getElementById('new-rim').value = rim;
+            }
+            calculate();
+        }
+
+        function setAsOriginal() {
+            const newWidth = document.getElementById('new-width').value;
+            const newRatio = document.getElementById('new-ratio').value;
+            const newRim = document.getElementById('new-rim').value;
+
+            if (!newWidth || !newRatio || !newRim) {
+                alert('请先输入新轮胎的参数');
+                return;
+            }
+
+            document.getElementById('original-width').value = newWidth;
+            document.getElementById('original-ratio').value = newRatio;
+            document.getElementById('original-rim').value = newRim;
+            calculate();
+        }
+
+        function setAsNew() {
+            const originalWidth = document.getElementById('original-width').value;
+            const originalRatio = document.getElementById('original-ratio').value;
+            const originalRim = document.getElementById('original-rim').value;
+
+            if (!originalWidth || !originalRatio || !originalRim) {
+                alert('请先输入原厂轮胎的参数');
+                return;
+            }
+
+            document.getElementById('new-width').value = originalWidth;
+            document.getElementById('new-ratio').value = originalRatio;
+            document.getElementById('new-rim').value = originalRim;
+            calculate();
+        }
+
+        function quickSet(type) {
+            if (type === 'original') {
+                const width = prompt('输入轮胎宽度 (mm):', '205');
+                const ratio = prompt('输入扁平比 (%):', '55');
+                const rim = prompt('输入轮毂直径 (英寸):', '16');
+
+                if (width && ratio && rim) {
+                    document.getElementById('original-width').value = width;
+                    document.getElementById('original-ratio').value = ratio;
+                    document.getElementById('original-rim').value = rim;
+                    calculate();
+                }
+            } else {
+                const width = prompt('输入轮胎宽度 (mm):', '225');
+                const ratio = prompt('输入扁平比 (%):', '45');
+                const rim = prompt('输入轮毂直径 (英寸):', '17');
+
+                if (width && ratio && rim) {
+                    document.getElementById('new-width').value = width;
+                    document.getElementById('new-ratio').value = ratio;
+                    document.getElementById('new-rim').value = rim;
+                    calculate();
+                }
+            }
+        }
+
+        function calculateSidewallHeight(width, ratio) {
+            return width * ratio / 100;
+        }
+
+        function calculateDiameter(width, ratio, rim) {
+            const sidewall = calculateSidewallHeight(width, ratio);
+            return sidewall * 2 + rim * 25.4;
+        }
+
+        function calculate() {
+            const originalWidth = parseFloat(document.getElementById('original-width').value);
+            const originalRatio = parseFloat(document.getElementById('original-ratio').value);
+            const originalRim = parseFloat(document.getElementById('original-rim').value);
+
+            const newWidth = parseFloat(document.getElementById('new-width').value);
+            const newRatio = parseFloat(document.getElementById('new-ratio').value);
+            const newRim = parseFloat(document.getElementById('new-rim').value);
+
+            if (!originalWidth || !originalRatio || !originalRim) {
+                alert('请输入完整的原厂轮胎参数');
+                return;
+            }
+
+            if (!newWidth || !newRatio || !newRim) {
+                alert('请输入完整的新轮胎参数');
+                return;
+            }
+
+            const originalDiameter = calculateDiameter(originalWidth, originalRatio, originalRim);
+            const newDiameter = calculateDiameter(newWidth, newRatio, newRim);
+
+            const diameterChange = newDiameter - originalDiameter;
+            const diameterChangePct = (diameterChange / originalDiameter * 100).toFixed(2);
+
+            const clearanceChange = diameterChange / 2;
+
+            document.getElementById('original-diameter').textContent = originalDiameter.toFixed(1) + ' mm';
+            document.getElementById('new-diameter').textContent = newDiameter.toFixed(1) + ' mm';
+
+            const diameterChangeElem = document.getElementById('diameter-change');
+            diameterChangeElem.textContent = (diameterChange >= 0 ? '+' : '') + diameterChange.toFixed(1) + ' mm';
+            diameterChangeElem.className = 'result-value ' + (diameterChange > 0 ? 'positive' : diameterChange < 0 ? 'negative' : 'neutral');
+
+            const diameterChangePctElem = document.getElementById('diameter-change-pct');
+            diameterChangePctElem.textContent = '(' + (diameterChangePct >= 0 ? '+' : '') + diameterChangePct + '%)';
+            diameterChangePctElem.className = 'result-change ' + (diameterChange > 0 ? 'positive' : diameterChange < 0 ? 'negative' : 'neutral');
+
+            const clearanceChangeElem = document.getElementById('clearance-change');
+            clearanceChangeElem.textContent = (clearanceChange >= 0 ? '+' : '') + clearanceChange.toFixed(1) + ' mm';
+            clearanceChangeElem.className = 'result-value ' + (clearanceChange > 0 ? 'positive' : clearanceChange < 0 ? 'negative' : 'neutral');
+
+            updateCompatibility(Math.abs(diameterChangePct));
+            updateSpeedTable(originalDiameter, newDiameter);
+            updateTireDiagram(originalWidth, originalRatio, originalRim, newWidth, newRatio, newRim);
+
+            document.getElementById('results').style.display = 'block';
+        }
+
+        function updateCompatibility(diffPct) {
+            const badge = document.getElementById('compatibility-badge');
+            const text = document.getElementById('compatibility-text');
+
+            if (diffPct <= 3) {
+                badge.textContent = '✅ 推荐更换';
+                badge.className = 'compatibility-badge compatible';
+                text.textContent = '直径差异在 ±3% 以内，与原厂规格兼容性良好，可以安全更换。';
+            } else if (diffPct <= 5) {
+                badge.textContent = '⚠️ 可接受';
+                badge.className = 'compatibility-badge acceptable';
+                text.textContent = '直径差异在 3-5% 之间，可能影响时速表和里程表准确性，建议谨慎使用。';
+            } else {
+                badge.textContent = '❌ 不推荐';
+                badge.className = 'compatibility-badge not-compatible';
+                text.textContent = '直径差异超过 5%，可能导致时速表严重偏差、ABS系统异常等安全问题，强烈不建议更换。';
+            }
+        }
+
+        function updateSpeedTable(originalDiameter, newDiameter) {
+            const speeds = [60, 80, 100, 120, 140, 160, 180, 200];
+            const tbody = document.getElementById('speed-table-body');
+            tbody.innerHTML = '';
+
+            speeds.forEach(speed => {
+                const actualSpeed = speed * (newDiameter / originalDiameter);
+                const error = actualSpeed - speed;
+                const errorPct = ((error / speed) * 100).toFixed(2);
+
+                const row = tbody.insertRow();
+                
+                const cell1 = row.insertCell();
+                cell1.textContent = speed;
+
+                const cell2 = row.insertCell();
+                cell2.textContent = actualSpeed.toFixed(1);
+
+                const cell3 = row.insertCell();
+                cell3.textContent = (error >= 0 ? '+' : '') + error.toFixed(1);
+                cell3.className = 'speed-error ' + (error > 0 ? 'positive' : error < 0 ? 'negative' : 'neutral');
+
+                const cell4 = row.insertCell();
+                cell4.textContent = (errorPct >= 0 ? '+' : '') + errorPct + '%';
+                cell4.className = 'speed-error ' + (error > 0 ? 'positive' : error < 0 ? 'negative' : 'neutral');
+            });
+        }
+
+        function updateTireDiagram(originalWidth, originalRatio, originalRim, newWidth, newRatio, newRim) {
+            const svg = document.getElementById('tire-svg');
+            svg.innerHTML = '';
+
+            const originalSidewall = calculateSidewallHeight(originalWidth, originalRatio);
+            const newSidewall = calculateSidewallHeight(newWidth, newRatio);
+            const originalDiameter = calculateDiameter(originalWidth, originalRatio, originalRim);
+            const newDiameter = calculateDiameter(newWidth, newRatio, newRim);
+
+            const scale = 250 / Math.max(originalDiameter, newDiameter);
+            
+            const originalScaled = originalDiameter * scale;
+            const newScaled = newDiameter * scale;
+            const originalSidewallScaled = originalSidewall * scale;
+            const newSidewallScaled = newSidewall * scale;
+            const originalRimScaled = originalRim * 25.4 * scale;
+            const newRimScaled = newRim * 25.4 * scale;
+
+            const centerY = 150;
+            const originalX = 150;
+            const newX = 450;
+
+            // Original tire
+            drawTire(svg, originalX, centerY, originalScaled, originalSidewallScaled, originalRimScaled, '#e63946', '原厂');
+
+            // New tire
+            drawTire(svg, newX, centerY, newScaled, newSidewallScaled, newRimScaled, '#4caf50', '新胎');
+
+            // Labels
+            const originalLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            originalLabel.setAttribute('x', originalX);
+            originalLabel.setAttribute('y', 280);
+            originalLabel.setAttribute('text-anchor', 'middle');
+            originalLabel.setAttribute('fill', '#e63946');
+            originalLabel.setAttribute('font-weight', 'bold');
+            originalLabel.textContent = originalWidth + '/' + originalRatio + 'R' + originalRim;
+            svg.appendChild(originalLabel);
+
+            const newLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            newLabel.setAttribute('x', newX);
+            newLabel.setAttribute('y', 280);
+            newLabel.setAttribute('text-anchor', 'middle');
+            newLabel.setAttribute('fill', '#4caf50');
+            newLabel.setAttribute('font-weight', 'bold');
+            newLabel.textContent = newWidth + '/' + newRatio + 'R' + newRim;
+            svg.appendChild(newLabel);
+        }
+
+        function drawTire(svg, x, y, diameter, sidewall, rim, color, label) {
+            const radius = diameter / 2;
+            const rimRadius = rim / 2;
+
+            // Tire outer circle
+            const tire = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            tire.setAttribute('cx', x);
+            tire.setAttribute('cy', y);
+            tire.setAttribute('r', radius);
+            tire.setAttribute('fill', 'none');
+            tire.setAttribute('stroke', color);
+            tire.setAttribute('stroke-width', '3');
+            svg.appendChild(tire);
+
+            // Rim
+            const rimCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            rimCircle.setAttribute('cx', x);
+            rimCircle.setAttribute('cy', y);
+            rimCircle.setAttribute('r', rimRadius);
+            rimCircle.setAttribute('fill', 'none');
+            rimCircle.setAttribute('stroke', '#888');
+            rimCircle.setAttribute('stroke-width', '2');
+            svg.appendChild(rimCircle);
+
+            // Sidewall hatching (simplified)
+            const sidewallRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            sidewallRect.setAttribute('x', x - radius);
+            sidewallRect.setAttribute('y', y - sidewall/2);
+            sidewallRect.setAttribute('width', radius * 2);
+            sidewallRect.setAttribute('height', sidewall);
+            sidewallRect.setAttribute('fill', 'none');
+            sidewallRect.setAttribute('stroke', color);
+            sidewallRect.setAttribute('stroke-width', '1');
+            sidewallRect.setAttribute('stroke-dasharray', '5,5');
+            sidewallRect.setAttribute('opacity', '0.3');
+            svg.appendChild(sidewallRect);
+
+            // Center dot
+            const center = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            center.setAttribute('cx', x);
+            center.setAttribute('cy', y);
+            center.setAttribute('r', '3');
+            center.setAttribute('fill', '#888');
+            svg.appendChild(center);
+        }
+
+        // Auto-calculate on input change
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('change', () => {
+                const originalWidth = document.getElementById('original-width').value;
+                const originalRatio = document.getElementById('original-ratio').value;
+                const originalRim = document.getElementById('original-rim').value;
+                const newWidth = document.getElementById('new-width').value;
+                const newRatio = document.getElementById('new-ratio').value;
+                const newRim = document.getElementById('new-rim').value;
+
+                if (originalWidth && originalRatio && originalRim && newWidth && newRatio && newRim) {
+                    calculate();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
