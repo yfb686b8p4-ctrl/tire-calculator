@@ -809,9 +809,7 @@ const BATTERY_DB = {
             const errorEl = document.getElementById('vin-error');
             if (!validateVin(vin)) {
                 if (errorEl) errorEl.classList.add('show');
-                alert('车架号格式不正确
-要求：12-17位（字母A-Z不含I/O/Q + 数字）
-您输入了' + vin.length + '位：' + vin);
+                alert('车架号格式不正确\n要求：12-17位（字母A-Z不含I/O/Q + 数字）\n您输入了' + vin.length + '位：' + vin);
                 return;
             }
             if (errorEl) errorEl.classList.remove('show');
