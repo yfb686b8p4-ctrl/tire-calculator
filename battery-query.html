@@ -831,12 +831,33 @@ const BATTERY_DB = {
                     alts: data.alts || []
                 });
             } else {
-                showResult({
-                    vehicle: '品牌: ' + decoded.maker + ' | VIN: ' + vin,
-                    battery: '需通过VIN确认品牌后查询',
-                    specs: '建议：使用「车型选择」功能直接选择您的车型',
-                    alts: []
-                });
+                // 品牌已识别，展示该品牌下的所有车型电池
+                if (decoded.matchedBrand && BATTERY_DB[decoded.matchedBrand]) {
+                    const brandData = BATTERY_DB[decoded.matchedBrand];
+                    const seriesList = Object.keys(brandData);
+                    // 取第一款作为主要推荐
+                    const firstSeries = seriesList[0];
+                    const data = brandData[firstSeries];
+                    let altList = [];
+                    // 收集所有子车型作为替代
+                    seriesList.forEach(function(s) {
+                        if (brandData[s].battery) altList.push(s + ': ' + brandData[s].battery);
+                    });
+                    showResult({
+                        vehicle: decoded.maker + ' | VIN: ' + vin + ' (匹配品牌: ' + decoded.matchedBrand + ')',
+                        battery: data.battery + ' [' + firstSeries + ']',
+                        specs: data.specs + '
+📋 该品牌下共有 ' + seriesList.length + ' 款车型，如不符请用「车型选择」精确匹配',
+                        alts: altList
+                    });
+                } else {
+                    showResult({
+                        vehicle: '品牌: ' + decoded.maker + ' | VIN: ' + vin,
+                        battery: '暂无此品牌电池数据',
+                        specs: '建议：使用「车型选择」功能查询',
+                        alts: []
+                    });
+                }
             }
         } catch(e) {
             alert('查询出错: ' + e.message);
