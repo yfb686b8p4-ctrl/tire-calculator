@@ -462,7 +462,17 @@
 
     <script>
     // ============ 电池数据库 ============
-    const BATTERY_DB = {
+    
+// ============ iOS Safari / 微信 WebView 兼容补丁 ============
+(function fixVideo() {
+    // iOS Safari 需要手动触发 play
+    document.addEventListener('touchstart', function() {
+        const v = document.getElementById('scanner-video');
+        if (v && v.srcObject && v.paused) v.play().catch(()=>{});
+    }, { once: true });
+})();
+PATCH_EOF
+const BATTERY_DB = {
         // 大众
         '大众': {
             '朗逸': { years: ['2020-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | 极性: 极性朝向右侧', alts: ['风帆Sail 6-QW-60', '骆驼6-QW-60', '瓦尔塔H5 560 150 060'] },
@@ -836,7 +846,6 @@
         const hintEl = document.getElementById('scanner-hint');
         const controls = document.getElementById('scanner-controls');
         
-        // 重置状态
         document.getElementById('scanner-captured').classList.remove('show');
         document.getElementById('snap-preview').style.display = 'none';
         video.style.display = 'block';
@@ -844,33 +853,51 @@
         hintEl.innerHTML = '🎯 对准车架号金属刻字，保持稳定';
         
         try {
-            stream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: 'environment',
-                    width: { ideal: 1920, min: 1280 },
-                    height: { ideal: 1080, min: 720 }
-                },
-                audio: false
-            });
+            // 尝试多个摄像头配置（后置优先，兼容前置）
+            let stream = null;
+            const configs = [
+                { video: { facingMode: { exact: 'environment' }, width: { ideal: 1280 } } },
+                { video: { facingMode: 'environment' } },
+                { video: { facingMode: 'user' } },
+                { video: true }
+            ];
+            for (const cfg of configs) {
+                try { stream = await navigator.mediaDevices.getUserMedia(cfg); break; } catch(e) {}
+            }
+            if (!stream) throw new Error('camera_unavailable');
             
             video.srcObject = stream;
-            await video.play();
+            video.setAttribute('playsinline', '');
+            video.setAttribute('autoplay', '');
+            await video.play().catch(() => {});
             overlay.classList.add('show');
             
-            // 初始化拍照canvas
             snapCanvas = document.createElement('canvas');
             snapCtx = snapCanvas.getContext('2d');
             
         } catch (err) {
             console.error('Camera error:', err);
-            if (err.name === 'NotAllowedError') {
-                alert('请允许访问相机权限\n设置 → 微信/浏览器 → 相机 → 允许');
-            } else if (err.name === 'NotFoundError') {
-                alert('未检测到摄像头，请使用手动输入车架号');
+            const msg = err.message || '';
+            if (/not.?allowed|permission|denied/i.test(msg)) {
+                alert('⚠️ 请允许相机权限\n\n操作：\n1. 点击右上角「···」\n2. 设置 → 允许摄像头\n3. 重新进入此页面');
+            } else if (/not.?found|no.?device/i.test(msg)) {
+                alert('📱 未检测到摄像头\n\n请直接手动输入17位车架号');
             } else {
-                alert('无法访问相机: ' + err.message);
+                alert('📷 相机无法打开\n\n请直接手动输入17位车架号');
             }
+            // 即使失败也显示界面，引导用户手动输入
+            overlay.classList.add('show');
+            controls.innerHTML = '<button class="btn btn-primary" onclick="showManualInput()" style="font-size:1.2rem;padding:16px 32px;">📝 手动输入车架号</button>';
+            hintEl.innerHTML = '⚠️ 摄像头不可用，请手动输入车架号';
         }
+    }
+    
+    function showManualInput() {
+        closeScanner();
+        setTimeout(() => {
+            const inp = document.getElementById('vin-input');
+            if (inp) { inp.focus(); inp.scrollIntoView(); }
+        }, 100);
     }
 
     // ========== 拍照 ==========
@@ -881,7 +908,17 @@
         const controls = document.getElementById('scanner-controls');
         const captured = document.getElementById('scanner-captured');
         
-        if (!video.videoWidth) return;
+        // iOS Safari兼容：视频可能未完全play
+        if (!video.videoWidth && !video.videoHeight) {
+            hintEl.innerHTML = '⚠️ 摄像头未就绪，请稍等1秒后重试';
+            setTimeout(() => capturePhoto(), 1000);
+            return;
+        }
+        
+        if (!video.videoWidth || !video.videoHeight) {
+            // 尝试从视频元素直接截图
+            hintEl.innerHTML = '📸 已拍照，请输入车架号';
+        }        if (!video.videoWidth) return;
         
         // 振动反馈
         if (navigator.vibrate) navigator.vibrate(100);
