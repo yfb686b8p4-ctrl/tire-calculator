@@ -8,7 +8,6 @@
     <meta name="theme-color" content="#1a1a2e">
     <title>电池型号查询 - Battery Finder</title>
 
-    <!-- 轻量方案：不依赖重型OCR库，使用原生拍照+手动确认 -->
     <style>
         * {
             margin: 0;
@@ -191,7 +190,6 @@
             font-size: 1.1rem;
             letter-spacing: 2px;
         }
-        /* Scanner overlay */
         .scanner-overlay {
             position: fixed;
             top: 0;
@@ -246,23 +244,6 @@
             border-radius: 8px;
             box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
         }
-        .scanner-frame::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 10%;
-            right: 10%;
-            height: 3px;
-            background: linear-gradient(90deg, transparent, #f7b731, transparent);
-            animation: scanLine 1.2s ease-in-out infinite;
-            box-shadow: 0 0 10px #f7b731, 0 0 20px rgba(247,183,49,0.4);
-            border-radius: 2px;
-        }
-        @keyframes scanLine {
-            0% { top: 8%; }
-            50% { top: 88%; }
-            100% { top: 8%; }
-        }
         .scanner-hint {
             padding: 20px;
             text-align: center;
@@ -308,7 +289,6 @@
             transition: all 0.2s;
         }
         .btn-snap:active { transform: scale(0.92); box-shadow: 0 2px 10px rgba(247,183,49,0.3); }
-        /* Tab switcher */
         .tabs {
             display: flex;
             gap: 8px;
@@ -332,7 +312,6 @@
         }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        /* Loading state */
         .loading {
             text-align: center;
             padding: 40px;
@@ -353,7 +332,6 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-        /* Error state */
         .error-msg {
             background: rgba(230, 57, 70, 0.2);
             border: 1px solid #e63946;
@@ -365,6 +343,21 @@
             display: none;
         }
         .error-msg.show { display: block; }
+        
+        /* 调试信息显示 */
+        #js-error {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #e63946;
+            color: #fff;
+            padding: 10px;
+            font-size: 0.8rem;
+            z-index: 99999;
+            display: none;
+        }
+        #js-error.show { display: block; }
     </style>
 </head>
 <body>
@@ -374,12 +367,12 @@
 
         <!-- Tabs -->
         <div class="tabs">
-            <button type="button" class="tab active" onclick=\"switchTab('scan', event)\">📸 拍照识别</button>
-            <button type="button" class="tab" onclick=\"switchTab('select', event)\">🚗 车型选择</button>
+            <button type="button" class="tab active" id="tab-scan-btn">📸 拍照识别</button>
+            <button type="button" class="tab" id="tab-select-btn">🚗 车型选择</button>
         </div>
 
-        <!-- Tab 1: 原生拍照OCR + 手动输入 -->
-        <div id="tab-scan" style="display:block!important" class="tab-content active">
+        <!-- Tab 1: VIN输入 + 拍照 -->
+        <div id="tab-scan" class="tab-content active">
             <div class="card">
                 <h2>🔍 车架号查询</h2>
                 <p style="color:#aaa;font-size:0.85rem;text-align:center;margin-bottom:14px;">
@@ -396,8 +389,7 @@
                 <div class="error-msg" id="vin-error">车架号格式不正确，请输入17位VIN码（不含I/O/Q）</div>
                 
                 <!-- 查询按钮 -->
-                <button type="button" class="btn btn-primary" id="btn-query-vin" onclick="console.log('[btn]queryByVin点击')||queryByVin()" 
-                        style="width:100%;padding:16px;font-size:1.15rem;margin-top:10px;">
+                <button type="button" class="btn btn-primary" id="btn-query-vin" style="width:100%;padding:16px;font-size:1.15rem;margin-top:10px;">
                     🔍 查询电池型号
                 </button>
 
@@ -410,14 +402,14 @@
                     
                     <!-- 原生相机 -->
                     <input type="file" id="native-camera" accept="image/*" capture="environment" style="display:none">
-                    <button type="button" onclick="document.getElementById('native-camera').click()" 
+                    <button type="button" id="btn-native-camera" 
                             style="width:100%;padding:14px;font-size:1rem;background:#1e3a5f;color:#f7b731;border:2px solid #f7b731;border-radius:12px;font-weight:bold;cursor:pointer;margin-bottom:8px;">
                         📸 拍照识别车架号
                     </button>
                     
                     <!-- 相册选取 -->
                     <input type="file" id="album-pick" accept="image/*" style="display:none">
-                    <button type="button" onclick="document.getElementById('album-pick').click()" 
+                    <button type="button" id="btn-album-pick" 
                             style="width:100%;padding:12px;font-size:0.95rem;background:transparent;color:#888;border:1px solid #555;border-radius:10px;cursor:pointer;">
                         🖼️ 从相册选取照片
                     </button>
@@ -435,7 +427,7 @@
                     <input type="text" id="scanned-vin" placeholder="识别到的车架号会自动填入这里" 
                            style="flex:1;padding:12px;border-radius:8px;border:2px solid #f7b731;background:#16213e;color:#f7b731;font-size:1rem;text-transform:uppercase;letter-spacing:1px;"
                            oninput="this.value=this.value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g,'')">
-                    <button onclick="console.log('[btn]queryByVIN点击')||queryByVIN()" 
+                    <button type="button" id="btn-query-scanned" 
                             style="padding:12px 20px;background:#f7b731;color:#1a1a2e;border:none;border-radius:8px;font-weight:bold;font-size:1rem;cursor:pointer;">
                         查询
                     </button>
@@ -449,13 +441,13 @@
                 <h2>🚗 选择车型</h2>
                 <div class="input-group">
                     <label>品牌</label>
-                    <select id="brand-select" onchange="onBrandChange()">
+                    <select id="brand-select">
                         <option value="">-- 请选择品牌 --</option>
                     </select>
                 </div>
                 <div class="input-group">
                     <label>车系</label>
-                    <select id="series-select" onchange="onSeriesChange()" disabled>
+                    <select id="series-select" disabled>
                         <option value="">-- 先选品牌 --</option>
                     </select>
                 </div>
@@ -466,7 +458,7 @@
                     </select>
                 </div>
                 <div class="btn-row">
-                    <button type="button" class="btn btn-primary" onclick="console.log('[btn]queryByVehicle点击')||queryByVehicle()" style="flex:2">查询电池型号</button>
+                    <button type="button" class="btn btn-primary" id="btn-query-vehicle" style="flex:2">查询电池型号</button>
                 </div>
             </div>
         </div>
@@ -490,7 +482,7 @@
     <div class="scanner-overlay" id="scanner-overlay">
         <div class="scanner-header">
             <h3>📷 扫描车架号</h3>
-            <button type="button" class="scanner-close" onclick="closeScanner()">关闭</button>
+            <button type="button" class="scanner-close" id="btn-close-scanner">关闭</button>
         </div>
         <div class="scanner-video-container">
             <video id="scanner-video" autoplay playsinline></video>
@@ -501,30 +493,56 @@
             🎯 对准车架号，点拍照按钮
         </div>
         <div class="scanner-controls" id="scanner-controls">
-            <button type="button" class="btn btn-snap" id="btn-snap" onclick="capturePhoto()">📸 拍照识别</button>
+            <button type="button" class="btn-snap" id="btn-snap">📸 拍照识别</button>
         </div>
         <div class="scanner-captured" id="scanner-captured">
             <div style="color:#f7b731;font-size:0.85rem;margin-bottom:8px;text-align:center;">🔤 输入车架号（大陆17位/港澳可少于17位）</div>
             <input type="text" id="scanned-vin-overlay" maxlength="17" placeholder="如：LVKY9103LSX63950" style="text-transform:uppercase;font-size:1.1rem;letter-spacing:2px;text-align:center;">
             <div class="btn-row" style="margin-top:14px;">
-                <button type="button" class="btn btn-secondary" onclick="retakePhoto()">🔄 重拍</button>
-                <button type="button" class="btn btn-primary" onclick="confirmScan()">✅ 确认查询</button>
+                <button type="button" class="btn btn-secondary" id="btn-retake">🔄 重拍</button>
+                <button type="button" class="btn btn-primary" id="btn-confirm-scan">✅ 确认查询</button>
             </div>
         </div>
     </div>
+    
+    <!-- 错误显示区域 -->
+    <div id="js-error"></div>
 
     <script>
-    // ============ 电池数据库 ============
+    // ============ 全局错误捕获 ============
+    window.onerror = function(msg, src, line, col, err) {
+        var errorDiv = document.getElementById('js-error');
+        if (errorDiv) {
+            errorDiv.innerHTML = 'JS错误: ' + msg + ' (行' + line + ', 列' + col + ')';
+            errorDiv.classList.add('show');
+            setTimeout(function() { errorDiv.classList.remove('show'); }, 10000);
+        }
+        console.error('[Global Error]', msg, 'at line', line, 'col', col, err);
+        return false;
+    };
     
-// ============ iOS Safari / 微信 WebView 兼容补丁 ============
-(function fixVideo() {
-    // iOS Safari 需要手动触发 play
-    document.addEventListener('touchstart', function() {
-        const v = document.getElementById('scanner-video');
-        if (v && v.srcObject && v.paused) v.play().catch(()=>{});
-    }, { once: true });
-})();
-const BATTERY_DB = {
+    window.addEventListener('error', function(e) {
+        var errorDiv = document.getElementById('js-error');
+        if (errorDiv) {
+            errorDiv.innerHTML = 'JS错误: ' + e.message + ' (行' + e.lineno + ')';
+            errorDiv.classList.add('show');
+            setTimeout(function() { errorDiv.classList.remove('show'); }, 10000);
+        }
+        console.error('[Error Event]', e.error);
+    });
+
+    // ============ iOS Safari / 微信 WebView 兼容补丁 ============
+    (function fixVideo() {
+        document.addEventListener('touchstart', function() {
+            var v = document.getElementById('scanner-video');
+            if (v && v.srcObject && v.paused) {
+                v.play().catch(function(){});
+            }
+        }, { once: true });
+    })();
+    
+    // ============ 电池数据库 ============
+    var BATTERY_DB = {
         // 大众
         '大众': {
             '朗逸': { years: ['2020-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | 极性: 极性朝向右侧', alts: ['风帆Sail 6-QW-60', '骆驼6-QW-60', '瓦尔塔H5 560 150 060'] },
@@ -674,7 +692,7 @@ const BATTERY_DB = {
     };
 
     // VIN前缀解码库 (简化版)
-    const VIN_DECODER = {
+    var VIN_DECODER = {
         'LFV': '大众/一汽-大众',
         'LSV': '大众/上汽大众',
         'WVW': '大众/进口大众',
@@ -709,28 +727,191 @@ const BATTERY_DB = {
         'LXi': '理想/理想',
     };
 
+    // ============ 全局变量 ============
+    var stream = null;
+    var snapCanvas = null;
+    var snapCtx = null;
+
     // ============ 初始化 ============
     document.addEventListener('DOMContentLoaded', function() {
-    window.onerror = function(msg, src, line, col, err) { document.body.dataset.jsErr = msg + ' L' + line; return false; };
+        console.log('[DOMContentLoaded] 开始初始化');
+        
+        // 绑定所有按钮事件（使用addEventListener，避免onclick属性错误）
+        bindAllEvents();
+        
+        // 初始化品牌下拉框
         initBrandSelect();
-            initNativeCamera();
+        
+        // 初始化原生相机
+        initNativeCamera();
+        
+        console.log('[DOMContentLoaded] 初始化完成');
     });
 
+    // ============ 绑定所有事件 ============
+    function bindAllEvents() {
+        console.log('[bindAllEvents] 开始绑定事件');
+        
+        // Tab切换按钮
+        var tabScanBtn = document.getElementById('tab-scan-btn');
+        var tabSelectBtn = document.getElementById('tab-select-btn');
+        if (tabScanBtn) {
+            tabScanBtn.addEventListener('click', function(e) {
+                console.log('[tab-scan-btn] clicked');
+                switchTab('scan');
+            });
+        }
+        if (tabSelectBtn) {
+            tabSelectBtn.addEventListener('click', function(e) {
+                console.log('[tab-select-btn] clicked');
+                switchTab('select');
+            });
+        }
+        
+        // 查询按钮（VIN）
+        var btnQueryVin = document.getElementById('btn-query-vin');
+        if (btnQueryVin) {
+            btnQueryVin.addEventListener('click', function(e) {
+                console.log('[btn-query-vin] clicked');
+                e.preventDefault();
+                queryByVin();
+            });
+        }
+        
+        // 原生相机按钮
+        var btnNativeCamera = document.getElementById('btn-native-camera');
+        if (btnNativeCamera) {
+            btnNativeCamera.addEventListener('click', function(e) {
+                console.log('[btn-native-camera] clicked');
+                e.preventDefault();
+                var input = document.getElementById('native-camera');
+                if (input) input.click();
+            });
+        }
+        
+        // 相册选取按钮
+        var btnAlbumPick = document.getElementById('btn-album-pick');
+        if (btnAlbumPick) {
+            btnAlbumPick.addEventListener('click', function(e) {
+                console.log('[btn-album-pick] clicked');
+                e.preventDefault();
+                var input = document.getElementById('album-pick');
+                if (input) input.click();
+            });
+        }
+        
+        // 查询按钮（拍照后）
+        var btnQueryScanned = document.getElementById('btn-query-scanned');
+        if (btnQueryScanned) {
+            btnQueryScanned.addEventListener('click', function(e) {
+                console.log('[btn-query-scanned] clicked');
+                e.preventDefault();
+                queryByVinWithScanned();
+            });
+        }
+        
+        // 车型查询按钮
+        var btnQueryVehicle = document.getElementById('btn-query-vehicle');
+        if (btnQueryVehicle) {
+            btnQueryVehicle.addEventListener('click', function(e) {
+                console.log('[btn-query-vehicle] clicked');
+                e.preventDefault();
+                queryByVehicle();
+            });
+        }
+        
+        // 扫描相关按钮
+        var btnCloseScanner = document.getElementById('btn-close-scanner');
+        if (btnCloseScanner) {
+            btnCloseScanner.addEventListener('click', function(e) {
+                console.log('[btn-close-scanner] clicked');
+                e.preventDefault();
+                closeScanner();
+            });
+        }
+        
+        var btnSnap = document.getElementById('btn-snap');
+        if (btnSnap) {
+            btnSnap.addEventListener('click', function(e) {
+                console.log('[btn-snap] clicked');
+                e.preventDefault();
+                capturePhoto();
+            });
+        }
+        
+        var btnRetake = document.getElementById('btn-retake');
+        if (btnRetake) {
+            btnRetake.addEventListener('click', function(e) {
+                console.log('[btn-retake] clicked');
+                e.preventDefault();
+                retakePhoto();
+            });
+        }
+        
+        var btnConfirmScan = document.getElementById('btn-confirm-scan');
+        if (btnConfirmScan) {
+            btnConfirmScan.addEventListener('click', function(e) {
+                console.log('[btn-confirm-scan] clicked');
+                e.preventDefault();
+                confirmScan();
+            });
+        }
+        
+        // VIN输入框自动大写
+        var vinInput = document.getElementById('vin-input');
+        if (vinInput) {
+            vinInput.addEventListener('input', function(e) {
+                e.target.value = e.target.value.toUpperCase();
+            });
+        }
+        
+        var scannedVin = document.getElementById('scanned-vin');
+        if (scannedVin) {
+            scannedVin.addEventListener('input', function(e) {
+                e.target.value = e.target.value.toUpperCase();
+            });
+        }
+        
+        var scannedVinOverlay = document.getElementById('scanned-vin-overlay');
+        if (scannedVinOverlay) {
+            scannedVinOverlay.addEventListener('input', function(e) {
+                e.target.value = e.target.value.toUpperCase();
+            });
+        }
+        
+        console.log('[bindAllEvents] 事件绑定完成');
+    }
+
+    // ============ 初始化品牌下拉框 ============
     function initBrandSelect() {
-        const brandSelect = document.getElementById('brand-select');
-        const brands = Object.keys(BATTERY_DB).sort();
-        brands.forEach(brand => {
-            const opt = document.createElement('option');
+        console.log('[initBrandSelect] 开始');
+        var brandSelect = document.getElementById('brand-select');
+        if (!brandSelect) {
+            console.error('[initBrandSelect] 找不到brand-select');
+            return;
+        }
+        
+        var brands = Object.keys(BATTERY_DB).sort();
+        brands.forEach(function(brand) {
+            var opt = document.createElement('option');
             opt.value = brand;
             opt.textContent = brand;
             brandSelect.appendChild(opt);
         });
+        console.log('[initBrandSelect] 完成，共' + brands.length + '个品牌');
     }
 
+    // ============ 品牌变更 ============
     function onBrandChange() {
-        const brand = document.getElementById('brand-select').value;
-        const seriesSelect = document.getElementById('series-select');
-        const yearSelect = document.getElementById('year-select');
+        console.log('[onBrandChange] 开始');
+        var brand = document.getElementById('brand-select').value;
+        var seriesSelect = document.getElementById('series-select');
+        var yearSelect = document.getElementById('year-select');
+        
+        if (!seriesSelect || !yearSelect) {
+            console.error('[onBrandChange] 找不到series-select或year-select');
+            return;
+        }
         
         seriesSelect.innerHTML = '<option value="">-- 请选择车系 --</option>';
         yearSelect.innerHTML = '<option value="">-- 先选车系 --</option>';
@@ -742,19 +923,27 @@ const BATTERY_DB = {
         }
         
         seriesSelect.disabled = false;
-        const series = Object.keys(BATTERY_DB[brand] || {}).sort();
-        series.forEach(s => {
-            const opt = document.createElement('option');
+        var series = Object.keys(BATTERY_DB[brand] || {}).sort();
+        series.forEach(function(s) {
+            var opt = document.createElement('option');
             opt.value = s;
             opt.textContent = s;
             seriesSelect.appendChild(opt);
         });
+        console.log('[onBrandChange] 完成，品牌: ' + brand + ', 车系数: ' + series.length);
     }
 
+    // ============ 车系变更 ============
     function onSeriesChange() {
-        const brand = document.getElementById('brand-select').value;
-        const series = document.getElementById('series-select').value;
-        const yearSelect = document.getElementById('year-select');
+        console.log('[onSeriesChange] 开始');
+        var brand = document.getElementById('brand-select').value;
+        var series = document.getElementById('series-select').value;
+        var yearSelect = document.getElementById('year-select');
+        
+        if (!yearSelect) {
+            console.error('[onSeriesChange] 找不到year-select');
+            return;
+        }
         
         yearSelect.innerHTML = '<option value="">-- 请选择年份 --</option>';
         
@@ -764,56 +953,83 @@ const BATTERY_DB = {
         }
         
         yearSelect.disabled = false;
-        const data = BATTERY_DB[brand]?.[series];
-        if (data?.years) {
-            data.years.forEach(y => {
-                const opt = document.createElement('option');
+        var data = BATTERY_DB[brand]?.[series];
+        if (data && data.years) {
+            data.years.forEach(function(y) {
+                var opt = document.createElement('option');
                 opt.value = y;
                 opt.textContent = y;
                 yearSelect.appendChild(opt);
             });
         }
+        console.log('[onSeriesChange] 完成');
     }
 
     // ============ Tab切换 ============
-    function switchTab(tab, evt) {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    function switchTab(tab) {
+        console.log('[switchTab] tab: ' + tab);
+        document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+        document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
         
-        if (evt && evt.target) evt.target.classList.add('active');
-        document.getElementById('tab-' + tab).classList.add('active');
+        var targetTab = document.getElementById('tab-' + tab);
+        if (targetTab) {
+            targetTab.classList.add('active');
+        }
+        
+        // 更新tab按钮状态
+        if (tab === 'scan') {
+            var btn = document.getElementById('tab-scan-btn');
+            if (btn) btn.classList.add('active');
+        } else if (tab === 'select') {
+            var btn = document.getElementById('tab-select-btn');
+            if (btn) btn.classList.add('active');
+        }
     }
 
-    // ============ VIN查询 ============
+    // ============ VIN验证 ============
     function validateVin(vin) {
         return vin.length >= 12 && vin.length <= 17 && /^[A-HJ-NPR-Z0-9]{12,17}$/i.test(vin);
     }
 
+    // ============ VIN解码 ============
     function decodeVin(vin) {
-        // 简化解码: 根据前缀判断
-        const prefix = vin.substring(0, 3).toUpperCase();
-        const info = VIN_DECODER[prefix] || '未知品牌';
+        var prefix = vin.substring(0, 3).toUpperCase();
+        var info = VIN_DECODER[prefix] || '未知品牌';
         
-        // 尝试匹配数据库
-        const brand = Object.keys(BATTERY_DB).find(b => info.includes(b));
+        var brand = null;
+        var brands = Object.keys(BATTERY_DB);
+        for (var i = 0; i < brands.length; i++) {
+            if (info.indexOf(brands[i]) !== -1) {
+                brand = brands[i];
+                break;
+            }
+        }
         
         return {
             prefix: prefix,
             maker: info,
-            matchedBrand: brand || null,
-            year: vin.charAt(9), // 位置9是年份代码(简化)
+            matchedBrand: brand,
+            year: vin.charAt(9)
         };
     }
 
-        function queryByVin() {
+    // ============ VIN查询（主） ============
+    function queryByVin() {
+        console.log('[queryByVin] 开始');
         try {
-            const vinEl = document.getElementById('vin-input');
-            if (!vinEl) { alert('错误：找不到VIN输入框'); return; }
-            const vin = vinEl.value.trim().toUpperCase();
+            var vinEl = document.getElementById('vin-input');
+            if (!vinEl) {
+                alert('错误：找不到VIN输入框');
+                return;
+            }
+            var vin = vinEl.value.trim().toUpperCase();
             
-            if (!vin) { alert('请输入车架号'); return; }
+            if (!vin) {
+                alert('请输入车架号');
+                return;
+            }
             
-            const errorEl = document.getElementById('vin-error');
+            var errorEl = document.getElementById('vin-error');
             if (!validateVin(vin)) {
                 if (errorEl) errorEl.classList.add('show');
                 alert('车架号格式不正确\n要求：12-17位（字母A-Z不含I/O/Q + 数字）\n您输入了' + vin.length + '位：' + vin);
@@ -821,12 +1037,13 @@ const BATTERY_DB = {
             }
             if (errorEl) errorEl.classList.remove('show');
             
-            const decoded = decodeVin(vin);
+            var decoded = decodeVin(vin);
+            console.log('[queryByVin] 解码结果:', decoded);
             
             if (decoded.matchedBrand && BATTERY_DB[decoded.matchedBrand]) {
-                const brandData = BATTERY_DB[decoded.matchedBrand];
-                const firstSeries = Object.keys(brandData)[0];
-                const data = brandData[firstSeries];
+                var brandData = BATTERY_DB[decoded.matchedBrand];
+                var firstSeries = Object.keys(brandData)[0];
+                var data = brandData[firstSeries];
                 
                 showResult({
                     vehicle: decoded.maker + ' | VIN: ' + vin,
@@ -835,23 +1052,21 @@ const BATTERY_DB = {
                     alts: data.alts || []
                 });
             } else {
-                // 品牌已识别，展示该品牌下的所有车型电池
                 if (decoded.matchedBrand && BATTERY_DB[decoded.matchedBrand]) {
-                    const brandData = BATTERY_DB[decoded.matchedBrand];
-                    const seriesList = Object.keys(brandData);
-                    // 取第一款作为主要推荐
-                    const firstSeries = seriesList[0];
-                    const data = brandData[firstSeries];
-                    let altList = [];
-                    // 收集所有子车型作为替代
+                    var brandData = BATTERY_DB[decoded.matchedBrand];
+                    var seriesList = Object.keys(brandData);
+                    var firstSeries = seriesList[0];
+                    var data = brandData[firstSeries];
+                    var altList = [];
                     seriesList.forEach(function(s) {
-                        if (brandData[s].battery) altList.push(s + ': ' + brandData[s].battery);
+                        if (brandData[s] && brandData[s].battery) {
+                            altList.push(s + ': ' + brandData[s].battery);
+                        }
                     });
                     showResult({
                         vehicle: decoded.maker + ' | VIN: ' + vin + ' (匹配品牌: ' + decoded.matchedBrand + ')',
                         battery: data.battery + ' [' + firstSeries + ']',
-                        specs: data.specs + '
-📋 该品牌下共有 ' + seriesList.length + ' 款车型，如不符请用「车型选择」精确匹配',
+                        specs: data.specs + '\n📋 该品牌下共有 ' + seriesList.length + ' 款车型，如不符请用「车型选择」精确匹配',
                         alts: altList
                     });
                 } else {
@@ -867,61 +1082,111 @@ const BATTERY_DB = {
             alert('查询出错: ' + e.message);
             console.error('[queryByVin]', e);
         }
+        console.log('[queryByVin] 结束');
     }
 
-        // ============ 车型查询 ============
+    // ============ 使用拍照后的VIN查询 ============
+    function queryByVinWithScanned() {
+        console.log('[queryByVinWithScanned] 开始');
+        try {
+            var scannedEl = document.getElementById('scanned-vin');
+            var vin = '';
+            if (scannedEl && scannedEl.value.trim()) {
+                vin = scannedEl.value.trim().toUpperCase();
+            }
+            
+            if (!vin) {
+                alert('请先输入或识别车架号');
+                return;
+            }
+            
+            // 写入主输入框
+            var vinInput = document.getElementById('vin-input');
+            if (vinInput) {
+                vinInput.value = vin;
+            }
+            
+            // 调用主查询
+            queryByVin();
+        } catch(e) {
+            alert('查询出错: ' + e.message);
+            console.error('[queryByVinWithScanned]', e);
+        }
+    }
+
+    // ============ 车型查询 ============
     function queryByVehicle() {
-        const brand = document.getElementById('brand-select').value;
-        const series = document.getElementById('series-select').value;
-        const year = document.getElementById('year-select').value;
-        
-        if (!brand || !series) {
-            alert('请选择品牌和车系');
-            return;
+        console.log('[queryByVehicle] 开始');
+        try {
+            var brand = document.getElementById('brand-select').value;
+            var series = document.getElementById('series-select').value;
+            var year = document.getElementById('year-select').value;
+            
+            if (!brand || !series) {
+                alert('请选择品牌和车系');
+                return;
+            }
+            
+            var data = BATTERY_DB[brand]?.[series];
+            if (!data) {
+                alert('未找到该车型数据');
+                return;
+            }
+            
+            var vehicleText = year ? brand + ' ' + series + ' (' + year + ')' : brand + ' ' + series;
+            
+            showResult({
+                vehicle: vehicleText,
+                battery: data.battery,
+                specs: data.specs,
+                alts: data.alts || []
+            });
+        } catch(e) {
+            alert('查询出错: ' + e.message);
+            console.error('[queryByVehicle]', e);
         }
-        
-        const data = BATTERY_DB[brand]?.[series];
-        if (!data) {
-            alert('未找到该车型数据');
-            return;
-        }
-        
-        const vehicleText = year ? `${brand} ${series} (${year})` : `${brand} ${series}`;
-        
-        showResult({
-            vehicle: vehicleText,
-            battery: data.battery,
-            specs: data.specs,
-            alts: data.alts || []
-        });
+        console.log('[queryByVehicle] 结束');
     }
 
     // ============ 显示结果 ============
     function showResult(result) {
+        console.log('[showResult] 开始显示结果:', result);
         try {
-            console.log('[showResult] 开始显示结果:', result);
-            const card = document.getElementById('result-card');
-            if (!card) { console.error('[showResult] 找不到 result-card'); return; }
+            var card = document.getElementById('result-card');
+            if (!card) {
+                console.error('[showResult] 找不到result-card');
+                return;
+            }
             
-            const vehicleInfo = document.getElementById('vehicle-info');
-            if (vehicleInfo) vehicleInfo.innerHTML = `
-                <strong>📍 车型:</strong> <span class="vin-display">${result.vehicle}</span>
-            `;
+            var vehicleInfo = document.getElementById('vehicle-info');
+            if (vehicleInfo) {
+                vehicleInfo.innerHTML = '<strong>📍 车型:</strong> <span class="vin-display">' + result.vehicle + '</span>';
+            }
             
-            const batteryModel = document.getElementById('battery-model');
-            if (batteryModel) batteryModel.textContent = result.battery;
+            var batteryModel = document.getElementById('battery-model');
+            if (batteryModel) {
+                batteryModel.textContent = result.battery;
+            }
             
-            const batterySpecs = document.getElementById('battery-specs');
-            if (batterySpecs) batterySpecs.innerHTML = (result.specs || '').replace(/\|/g, '<br>').replace(/规格:/g, '<span>规格:</span>').replace(/极性:/g, '<span>极性:</span>').replace(/冷启动电流:/g, '<span>冷启动电流:</span>').replace(/启停/g, '<span>启停</span>');
+            var batterySpecs = document.getElementById('battery-specs');
+            if (batterySpecs && result.specs) {
+                var specsHtml = result.specs
+                    .replace(/\|/g, '<br>')
+                    .replace(/规格:/g, '<span>规格:</span>')
+                    .replace(/极性:/g, '<span>极性:</span>')
+                    .replace(/冷启动电流:/g, '<span>冷启动电流:</span>')
+                    .replace(/启停/g, '<span>启停</span>');
+                batterySpecs.innerHTML = specsHtml;
+            }
             
-            const altsDiv = document.getElementById('alt-models');
-            const altsWrapper = document.getElementById('result-alts');
+            var altsDiv = document.getElementById('alt-models');
+            var altsWrapper = document.getElementById('result-alts');
             if (altsDiv && altsWrapper) {
                 if (result.alts && result.alts.length > 0) {
                     altsWrapper.style.display = 'block';
-                    altsDiv.innerHTML = result.alts.map(alt => 
-                        `<span class="alt-item">${alt}</span>`
-                    ).join('');
+                    altsDiv.innerHTML = result.alts.map(function(alt) {
+                        return '<span class="alt-item">' + alt + '</span>';
+                    }).join('');
                 } else {
                     altsWrapper.style.display = 'none';
                     altsDiv.innerHTML = '';
@@ -937,246 +1202,247 @@ const BATTERY_DB = {
         }
     }
 
-    // ============ 扫码功能 (轻量拍照+确认模式) ============
-    let stream = null;
-    let snapCanvas = null;
-    let snapCtx = null;
-
-    // 初始化原生相机（触发系统级OCR）
+    // ============ 原生相机处理 ============
     function initNativeCamera() {
-        document.getElementById('native-camera').addEventListener('change', handleNativeCapture);
-        document.getElementById('album-pick').addEventListener('change', handleNativeCapture);
+        console.log('[initNativeCamera] 开始');
+        var nativeCamera = document.getElementById('native-camera');
+        var albumPick = document.getElementById('album-pick');
+        
+        if (nativeCamera) {
+            nativeCamera.addEventListener('change', handleNativeCapture);
+        }
+        if (albumPick) {
+            albumPick.addEventListener('change', handleNativeCapture);
+        }
+        console.log('[initNativeCamera] 完成');
     }
     
-    // 处理原生相机返回的图片 → 图像增强 → 显示引导用户长按识别
     function handleNativeCapture(e) {
-        const file = e.target.files[0];
+        console.log('[handleNativeCapture] 开始');
+        var file = e.target.files[0];
         if (!file) return;
         e.target.value = '';
         
-        const reader = new FileReader();
+        var reader = new FileReader();
         reader.onload = function(ev) {
-            const img = new Image();
+            var img = new Image();
             img.onload = function() {
-                const w = img.naturalWidth || img.width;
-                const h = img.naturalHeight || img.height;
+                var w = img.naturalWidth || img.width;
+                var h = img.naturalHeight || img.height;
                 
-                // 1. 图像增强（对比度增强+区域裁剪）
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                const cropW = Math.floor(w * 0.7);
-                const cropH = Math.floor(h * 0.2);
+                // 图像增强
+                var canvas = document.createElement('canvas');
+                var ctx = canvas.getContext('2d');
+                var cropW = Math.floor(w * 0.7);
+                var cropH = Math.floor(h * 0.2);
                 canvas.width = cropW * 2;
                 canvas.height = cropH * 2;
                 ctx.drawImage(img,
-                    Math.floor(w * 0.15), Math.floor(h * 0.35), cropW, cropH,  // 源：中间区域
-                    0, 0, cropW * 2, cropH * 2                                  // 目标：放大2倍
+                    Math.floor(w * 0.15), Math.floor(h * 0.35), cropW, cropH,
+                    0, 0, cropW * 2, cropH * 2
                 );
-                const id = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const d = id.data;
-                for (let i = 0; i < d.length; i += 4) {
-                    const f = 2.2;
+                var id = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                var d = id.data;
+                for (var i = 0; i < d.length; i += 4) {
+                    var f = 2.2;
                     d[i]   = Math.min(255, Math.max(0, f * (d[i] - 128) + 128));
                     d[i+1] = Math.min(255, Math.max(0, f * (d[i+1] - 128) + 128));
                     d[i+2] = Math.min(255, Math.max(0, f * (d[i+2] - 128) + 128));
                 }
                 ctx.putImageData(id, 0, 0);
-                const enhanced = canvas.toDataURL('image/jpeg', 0.95);
+                var enhanced = canvas.toDataURL('image/jpeg', 0.95);
                 
-                // 2. 显示增强后的图和输入框
-                const resultDiv = document.getElementById('photo-result');
-                document.getElementById('result-img').src = enhanced;
+                // 显示增强后的图
+                var resultDiv = document.getElementById('photo-result');
+                var resultImg = document.getElementById('result-img');
+                if (resultImg) resultImg.src = enhanced;
                 
-                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-                const isAndroid = /Android/.test(navigator.userAgent);
-                const guide = isIOS ? '👆 长按图片 →「识别文字」提取车架号'
+                var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                var isAndroid = /Android/.test(navigator.userAgent);
+                var guide = isIOS ? '👆 长按图片 →「识别文字」提取车架号'
                           : isAndroid ? '👆 长按图片 →「识别图片中的文字」提取车架号'
                           : '👆 长按图片识别文字后，手动复制到下方输入框';
                 
-                document.getElementById('ocr-guide').innerHTML = guide;
-                resultDiv.style.display = 'block';
-                resultDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                var ocrGuide = document.getElementById('ocr-guide');
+                if (ocrGuide) ocrGuide.innerHTML = guide;
+                if (resultDiv) {
+                    resultDiv.style.display = 'block';
+                    resultDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
             };
             img.src = ev.target.result;
         };
         reader.readAsDataURL(file);
-    }
-    
-    // queryByVIN: 兼容拍照后的输入框
-    function queryByVIN() {
-        let vin = '';
-        const inputEl = document.getElementById('vin-input');
-        const scannedEl = document.getElementById('scanned-vin');
-        const overlayEl = document.getElementById('scanned-vin-overlay');
-        
-        // 优先取拍照输入框的值
-        if (scannedEl && scannedEl.value.trim()) {
-            vin = scannedEl.value.trim().toUpperCase();
-        } else if (overlayEl && overlayEl.value.trim()) {
-            vin = overlayEl.value.trim().toUpperCase();
-        } else if (inputEl) {
-            vin = inputEl.value.trim().toUpperCase();
-        }
-        vin = vin.replace(/[^A-HJ-NPR-Z0-9]/g, '');
-        if (inputEl) inputEl.value = vin;
-        if (scannedEl) scannedEl.value = vin;
-        if (overlayEl) overlayEl.value = vin;
-        queryByVin();
-    }
-    
-    function showManualInput() {
-        closeScanner();
-        setTimeout(() => {
-            const inp = document.getElementById('vin-input');
-            if (inp) { inp.focus(); inp.scrollIntoView(); }
-        }, 100);
+        console.log('[handleNativeCapture] 完成');
     }
 
-    // [已废弃，由原生相机替代]
+    // ============ 扫描功能 ============
     function capturePhoto() {
-        // 初始化 canvas
-        if (!snapCanvas) {
-            snapCanvas = document.createElement('canvas');
-            snapCtx = snapCanvas.getContext('2d');
-        }
-        const video = document.getElementById('scanner-video');
-        const preview = document.getElementById('snap-preview');
-        const hintEl = document.getElementById('scanner-hint');
-        const controls = document.getElementById('scanner-controls');
-        const captured = document.getElementById('scanner-captured');
-        
-        // iOS Safari兼容：视频可能未完全play
-        if (!video.videoWidth && !video.videoHeight) {
-            hintEl.innerHTML = '⚠️ 摄像头未就绪，请稍等1秒后重试';
-            setTimeout(() => capturePhoto(), 1000);
-            return;
-        }
-        
-        if (!video.videoWidth || !video.videoHeight) {
-            hintEl.innerHTML = '📸 已拍照，请输入车架号';
-        }
-        if (!video.videoWidth) return;
-        
-        // 振动反馈
-        if (navigator.vibrate) navigator.vibrate(100);
-        
-        // 截取视频帧（全尺寸）
-        const vw = video.videoWidth;
-        const vh = video.videoHeight;
-        snapCanvas.width = vw;
-        snapCanvas.height = vh;
-        snapCtx.drawImage(video, 0, 0, vw, vh);
-        
-        // 显示拍照预览图
-        preview.src = snapCanvas.toDataURL('image/jpeg', 0.9);
-        preview.style.display = 'block';
-        video.style.display = 'none';
-        controls.style.display = 'none';
-        hintEl.innerHTML = '📸 拍照完成！👇 长按下方图片可识别文字';
-        
-        // ========== 图像增强（提高可读性）==========
-        (function enhanceImage() {
-            try {
-                const enhCanvas = document.createElement('canvas');
-                const enhCtx = enhCanvas.getContext('2d');
-                // 裁剪中间区域（车架号通常在画面中央）
-                const cropW = Math.floor(vw * 0.6);
-                const cropH = Math.floor(vh * 0.25);
-                const cropX = Math.floor((vw - cropW) / 2);
-                const cropY = Math.floor(vh * 0.35);
-                enhCanvas.width = cropW * 2;  // 放大2倍
-                enhCanvas.height = cropH * 2;
-                enhCtx.drawImage(snapCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW*2, cropH*2);
-                
-                // 对比度增强
-                const imgData = enhCtx.getImageData(0, 0, enhCanvas.width, enhCanvas.height);
-                const d = imgData.data;
-                for (let i = 0; i < d.length; i += 4) {
-                    const f = 2.0;  // 强对比度
-                    d[i]   = Math.min(255, Math.max(0, f * (d[i] - 128) + 128));
-                    d[i+1] = Math.min(255, Math.max(0, f * (d[i+1] - 128) + 128));
-                    d[i+2] = Math.min(255, Math.max(0, f * (d[i+2] - 128) + 128));
-                }
-                enhCtx.putImageData(imgData, 0, 0);
-                
-                // 用增强后的图替换预览（更清晰方便长按识别）
-                preview.src = enhCanvas.toDataURL('image/jpeg', 0.95);
-            } catch(e) {
-                console.log('图像增强跳过:', e.message);
+        console.log('[capturePhoto] 开始');
+        try {
+            if (!snapCanvas) {
+                snapCanvas = document.createElement('canvas');
+                snapCtx = snapCanvas.getContext('2d');
             }
-        })();
-        
-        // 显示输入确认区
-        captured.classList.add('show');
-        
-        // 聚焦输入框（弹出键盘方便输入）
-        setTimeout(() => {
-            document.getElementById('scanned-vin').focus();
-        }, 300);
+            var video = document.getElementById('scanner-video');
+            var preview = document.getElementById('snap-preview');
+            var hintEl = document.getElementById('scanner-hint');
+            var controls = document.getElementById('scanner-controls');
+            var captured = document.getElementById('scanner-captured');
+            
+            if (!video || !video.videoWidth) {
+                if (hintEl) hintEl.innerHTML = '⚠️ 摄像头未就绪，请稍等1秒后重试';
+                setTimeout(function() { capturePhoto(); }, 1000);
+                return;
+            }
+            
+            if (navigator.vibrate) navigator.vibrate(100);
+            
+            var vw = video.videoWidth;
+            var vh = video.videoHeight;
+            snapCanvas.width = vw;
+            snapCanvas.height = vh;
+            snapCtx.drawImage(video, 0, 0, vw, vh);
+            
+            if (preview) {
+                preview.src = snapCanvas.toDataURL('image/jpeg', 0.9);
+                preview.style.display = 'block';
+            }
+            if (video) video.style.display = 'none';
+            if (controls) controls.style.display = 'none';
+            if (hintEl) hintEl.innerHTML = '📸 拍照完成！👇 长按下方图片可识别文字';
+            
+            // 图像增强
+            (function enhanceImage() {
+                try {
+                    var enhCanvas = document.createElement('canvas');
+                    var enhCtx = enhCanvas.getContext('2d');
+                    var cropW = Math.floor(vw * 0.6);
+                    var cropH = Math.floor(vh * 0.25);
+                    var cropX = Math.floor((vw - cropW) / 2);
+                    var cropY = Math.floor(vh * 0.35);
+                    enhCanvas.width = cropW * 2;
+                    enhCanvas.height = cropH * 2;
+                    enhCtx.drawImage(snapCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW*2, cropH*2);
+                    
+                    var imgData = enhCtx.getImageData(0, 0, enhCanvas.width, enhCanvas.height);
+                    var d = imgData.data;
+                    for (var i = 0; i < d.length; i += 4) {
+                        var f = 2.0;
+                        d[i]   = Math.min(255, Math.max(0, f * (d[i] - 128) + 128));
+                        d[i+1] = Math.min(255, Math.max(0, f * (d[i+1] - 128) + 128));
+                        d[i+2] = Math.min(255, Math.max(0, f * (d[i+2] - 128) + 128));
+                    }
+                    enhCtx.putImageData(imgData, 0, 0);
+                    
+                    if (preview) preview.src = enhCanvas.toDataURL('image/jpeg', 0.95);
+                } catch(e) {
+                    console.log('图像增强跳过:', e.message);
+                }
+            })();
+            
+            if (captured) captured.classList.add('show');
+            
+            setTimeout(function() {
+                var scannedVinInput = document.getElementById('scanned-vin');
+                if (scannedVinInput) scannedVinInput.focus();
+            }, 300);
+        } catch(e) {
+            console.error('[capturePhoto] 错误:', e);
+        }
+        console.log('[capturePhoto] 结束');
     }
 
-    // ========== 重拍 ==========
     function retakePhoto() {
-        const video = document.getElementById('scanner-video');
-        const preview = document.getElementById('snap-preview');
-        const hintEl = document.getElementById('scanner-hint');
-        const controls = document.getElementById('scanner-controls');
-        const captured = document.getElementById('scanner-captured');
+        console.log('[retakePhoto] 开始');
+        var video = document.getElementById('scanner-video');
+        var preview = document.getElementById('snap-preview');
+        var hintEl = document.getElementById('scanner-hint');
+        var controls = document.getElementById('scanner-controls');
+        var captured = document.getElementById('scanner-captured');
         
-        preview.style.display = 'none';
-        preview.src = '';
-        video.style.display = 'block';
-        controls.style.display = 'flex';
-        captured.classList.remove('show');
-        document.getElementById('scanned-vin').value = '';
-        hintEl.innerHTML = '🎯 对准车架号，保持稳定，重新拍照';
+        if (preview) {
+            preview.style.display = 'none';
+            preview.src = '';
+        }
+        if (video) video.style.display = 'block';
+        if (controls) controls.style.display = 'flex';
+        if (captured) captured.classList.remove('show');
+        
+        var scannedVin = document.getElementById('scanned-vin');
+        if (scannedVin) scannedVin.value = '';
+        
+        if (hintEl) hintEl.innerHTML = '🎯 对准车架号，保持稳定，重新拍照';
+        console.log('[retakePhoto] 完成');
     }
 
-    // ========== 关闭扫描 ==========
     function closeScanner() {
-        const overlay = document.getElementById('scanner-overlay');
-        const video = document.getElementById('scanner-video');
-        const preview = document.getElementById('snap-preview');
-        const captured = document.getElementById('scanner-captured');
-        const controls = document.getElementById('scanner-controls');
+        console.log('[closeScanner] 开始');
+        var overlay = document.getElementById('scanner-overlay');
+        var video = document.getElementById('scanner-video');
+        var preview = document.getElementById('snap-preview');
+        var captured = document.getElementById('scanner-captured');
+        var controls = document.getElementById('scanner-controls');
         
         if (stream) {
-            stream.getTracks().forEach(track => track.stop());
+            stream.getTracks().forEach(function(track) { track.stop(); });
             stream = null;
         }
         
-        video.srcObject = null;
-        preview.style.display = 'none';
-        preview.src = '';
-        video.style.display = 'block';
-        controls.style.display = 'flex';
-        captured.classList.remove('show');
-        overlay.classList.remove('show');
-        document.getElementById('scanned-vin').value = '';
-        document.getElementById('scanner-hint').innerHTML = '🎯 对准车架号，点拍照按钮';
+        if (video) {
+            video.srcObject = null;
+        }
+        if (preview) {
+            preview.style.display = 'none';
+            preview.src = '';
+        }
+        if (video) video.style.display = 'block';
+        if (controls) controls.style.display = 'flex';
+        if (captured) captured.classList.remove('show');
+        if (overlay) overlay.classList.remove('show');
+        
+        var scannedVin = document.getElementById('scanned-vin');
+        if (scannedVin) scannedVin.value = '';
+        
+        var hintEl = document.getElementById('scanner-hint');
+        if (hintEl) hintEl.innerHTML = '🎯 对准车架号，点拍照按钮';
+        
         snapCanvas = null;
         snapCtx = null;
+        console.log('[closeScanner] 完成');
     }
 
-    // ========== 确认查询 ==========
     function confirmScan() {
-        const vin = document.getElementById('scanned-vin').value.trim().toUpperCase();
+        console.log('[confirmScan] 开始');
+        var vin = '';
+        var overlayEl = document.getElementById('scanned-vin-overlay');
+        if (overlayEl && overlayEl.value.trim()) {
+            vin = overlayEl.value.trim().toUpperCase();
+        }
+        
         if (!validateVin(vin)) {
             alert('⚠️ 车架号格式不正确\n\n要求：17位字母数字组合\n示例：LVKY9103LSX63950\n\n请检查后重新输入');
             return;
         }
-        document.getElementById('vin-input').value = vin;
+        
+        var vinInput = document.getElementById('vin-input');
+        if (vinInput) vinInput.value = vin;
+        
         closeScanner();
         queryByVin();
+        console.log('[confirmScan] 完成');
     }
 
-    // VIN输入自动大写
-    document.getElementById('vin-input').addEventListener('input', function(e) {
-        e.target.value = e.target.value.toUpperCase();
-    });
-
-    document.getElementById('scanned-vin').addEventListener('input', function(e) {
-        e.target.value = e.target.value.toUpperCase();
+    // 绑定select的onchange事件（使用属性，因为select事件比较复杂）
+    document.addEventListener('DOMContentLoaded', function() {
+        var brandSelect = document.getElementById('brand-select');
+        if (brandSelect) {
+            brandSelect.onchange = onBrandChange;
+        }
+        var seriesSelect = document.getElementById('series-select');
+        if (seriesSelect) {
+            seriesSelect.onchange = onSeriesChange;
+        }
     });
     </script>
 </body>
