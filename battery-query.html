@@ -371,54 +371,70 @@
 
         <!-- Tabs -->
         <div class="tabs">
-            <button class="tab active" onclick="switchTab('scan')">📸 拍照识别</button>
-            <button class="tab" onclick="switchTab('select')">🚗 车型选择</button>
+            <button class="tab active" onclick=\"switchTab('scan', event)\">📸 拍照识别</button>
+            <button class="tab" onclick=\"switchTab('select', event)\">🚗 车型选择</button>
         </div>
 
         <!-- Tab 1: 原生拍照OCR + 手动输入 -->
         <div id="tab-scan" class="tab-content active">
             <div class="card">
-                <h2>📸 拍照识别车架号</h2>
-                <p style="color:#aaa;font-size:0.85rem;text-align:center;margin-bottom:16px">
-                    拍下车架号，系统自动提取文字
+                <h2>🔍 车架号查询</h2>
+                <p style="color:#aaa;font-size:0.85rem;text-align:center;margin-bottom:14px;">
+                    输入17位车架号（大陆），港澳可少于17位
                 </p>
                 
-                <!-- 原生相机入口 -->
-                <input type="file" id="native-camera" accept="image/*" capture="environment" style="display:none">
-                <input type="file" id="album-pick" accept="image/*" style="display:none">
+                <!-- 手动输入区 -->
+                <div class="input-group">
+                    <label>车架号 (VIN)</label>
+                    <input type="text" id="vin-input" placeholder="如：LVKY9103LSX63950" 
+                           maxlength="20" autocomplete="off" 
+                           style="text-transform:uppercase;font-size:1.1rem;letter-spacing:2px;padding:14px;">
+                </div>
+                <div class="error-msg" id="vin-error">车架号格式不正确，请输入17位VIN码（不含I/O/Q）</div>
                 
-                <button onclick="document.getElementById('native-camera').click()" style="width:100%;padding:18px;font-size:1.15rem;background:#f7b731;color:#1a1a2e;border:none;border-radius:14px;font-weight:bold;cursor:pointer">
-                    📸 拍照识别（自动提取文字）
+                <!-- 查询按钮 -->
+                <button class="btn btn-primary" onclick="queryByVin()" 
+                        style="width:100%;padding:16px;font-size:1.15rem;margin-top:10px;">
+                    🔍 查询电池型号
                 </button>
-                <p style="color:#f7b731;font-size:0.8rem;text-align:center;margin:6px 0 14px">
-                    拍完自动弹出「识别文字」
-                </p>
                 
-                <button onclick="document.getElementById('album-pick').click()" style="width:100%;padding:14px;font-size:1rem;background:#1e3a5f;color:#f7b731;border:2px solid #f7b731;border-radius:14px;font-weight:bold;cursor:pointer">
-                    🖼️ 从相册选图
-                </button>
-                <p style="color:#888;font-size:0.8rem;text-align:center;margin:4px 0 16px">
-                    选相册中已拍的车架号照片
-                </p>
-                
-                <div style="border-top:1px solid #333;padding-top:16px;margin-top:4px">
-                    <p style="color:#aaa;font-size:0.85rem;text-align:center;margin-bottom:10px">— 或手动输入 —</p>
-                    <div class="input-group">
-                        <label>车架号 (VIN)</label>
-                        <input type="text" id="vin-input" placeholder="输入17位车架号" maxlength="17" autocomplete="off" style="text-transform: uppercase;">
-                    </div>
-                    <div class="error-msg" id="vin-error">车架号格式不正确，请输入17位VIN码</div>
-                    <button class="btn btn-primary" onclick="queryByVin()" style="width:100%;margin-top:10px">查询</button>
+                <!-- 分隔线 -->
+                <div style="border-top:1px solid #333;margin:20px 0 16px;padding-top:16px;">
+                    <p style="color:#f7b731;font-size:0.9rem;text-align:center;margin-bottom:12px;">
+                        📸 拍照识别（可选）
+                    </p>
+                    
+                    <!-- 原生相机 -->
+                    <input type="file" id="native-camera" accept="image/*" capture="environment" style="display:none">
+                    <button onclick="document.getElementById('native-camera').click()" 
+                            style="width:100%;padding:14px;font-size:1rem;background:#1e3a5f;color:#f7b731;border:2px solid #f7b731;border-radius:12px;font-weight:bold;cursor:pointer;margin-bottom:8px;">
+                        📸 拍照识别车架号
+                    </button>
+                    
+                    <!-- 相册选取 -->
+                    <input type="file" id="album-pick" accept="image/*" style="display:none">
+                    <button onclick="document.getElementById('album-pick').click()" 
+                            style="width:100%;padding:12px;font-size:0.95rem;background:transparent;color:#888;border:1px solid #555;border-radius:10px;cursor:pointer;">
+                        🖼️ 从相册选取照片
+                    </button>
                 </div>
             </div>
             
             <!-- 拍照结果展示区 -->
             <div id="photo-result" style="display:none;margin-top:16px" class="card">
-                <img id="result-img" style="width:100%;border-radius:8px" alt="拍照结果">
-                <div id="ocr-guide" style="color:#f7b731;font-size:0.9rem;text-align:center;padding:12px"></div>
-                <div style="display:flex;gap:8px;margin-top:8px">
-                    <input type="text" id="scanned-vin" placeholder="输入车架号" style="flex:1;padding:12px;border-radius:8px;border:2px solid #f7b731;background:#16213e;color:#f7b731;font-size:1rem;text-transform:uppercase;letter-spacing:1px;" oninput="this.value=this.value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g,'')">
-                    <button onclick="queryByVIN()" style="padding:12px 20px;background:#f7b731;color:#1a1a2e;border:none;border-radius:8px;font-weight:bold;font-size:1rem;cursor:pointer">查询</button>
+                <p style="color:#f7b731;font-size:0.85rem;text-align:center;margin-bottom:8px;">
+                    👆 长按上方图片 → 选择「识别文字」
+                </p>
+                <img id="result-img" style="width:100%;border-radius:8px;margin:8px 0;" alt="拍照结果">
+                <p id="ocr-guide" style="color:#f7b731;font-size:0.85rem;text-align:center;margin:8px 0;"></p>
+                <div style="display:flex;gap:8px;margin-top:10px;">
+                    <input type="text" id="scanned-vin" placeholder="识别到的车架号会自动填入这里" 
+                           style="flex:1;padding:12px;border-radius:8px;border:2px solid #f7b731;background:#16213e;color:#f7b731;font-size:1rem;text-transform:uppercase;letter-spacing:1px;"
+                           oninput="this.value=this.value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g,'')">
+                    <button onclick="queryByVIN()" 
+                            style="padding:12px 20px;background:#f7b731;color:#1a1a2e;border:none;border-radius:8px;font-weight:bold;font-size:1rem;cursor:pointer;">
+                        查询
+                    </button>
                 </div>
             </div>
         </div>
@@ -485,7 +501,7 @@
         </div>
         <div class="scanner-captured" id="scanner-captured">
             <div style="color:#f7b731;font-size:0.85rem;margin-bottom:8px;text-align:center;">🔤 输入车架号（大陆17位/港澳可少于17位）</div>
-            <input type="text" id="scanned-vin" maxlength="17" placeholder="如：LVKY9103LSX63950" style="text-transform:uppercase;font-size:1.1rem;letter-spacing:2px;text-align:center;">
+            <input type="text" id="scanned-vin-overlay" maxlength="17" placeholder="如：LVKY9103LSX63950" style="text-transform:uppercase;font-size:1.1rem;letter-spacing:2px;text-align:center;">
             <div class="btn-row" style="margin-top:14px;">
                 <button class="btn btn-secondary" onclick="retakePhoto()">🔄 重拍</button>
                 <button class="btn btn-primary" onclick="confirmScan()">✅ 确认查询</button>
@@ -504,7 +520,6 @@
         if (v && v.srcObject && v.paused) v.play().catch(()=>{});
     }, { once: true });
 })();
-PATCH_EOF
 const BATTERY_DB = {
         // 大众
         '大众': {
@@ -690,6 +705,7 @@ const BATTERY_DB = {
     // ============ 初始化 ============
     document.addEventListener('DOMContentLoaded', function() {
         initBrandSelect();
+            initNativeCamera();
     });
 
     function initBrandSelect() {
@@ -752,17 +768,17 @@ const BATTERY_DB = {
     }
 
     // ============ Tab切换 ============
-    function switchTab(tab) {
+    function switchTab(tab, evt) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
         
-        event.target.classList.add('active');
+        if (evt && evt.target) evt.target.classList.add('active');
         document.getElementById('tab-' + tab).classList.add('active');
     }
 
     // ============ VIN查询 ============
     function validateVin(vin) {
-        return vin.length === 17 && /^[A-HJ-NPR-Z0-9]{17}$/i.test(vin);
+        return vin.length >= 12 && vin.length <= 17 && /^[A-HJ-NPR-Z0-9]{12,17}$/i.test(vin);
     }
 
     function decodeVin(vin) {
@@ -935,8 +951,23 @@ const BATTERY_DB = {
     
     // queryByVIN: 兼容拍照后的输入框
     function queryByVIN() {
-        const vin = (document.getElementById('scanned-vin') || document.getElementById('vin-input')).value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, '');
-        document.getElementById('vin-input').value = vin;
+        let vin = '';
+        const inputEl = document.getElementById('vin-input');
+        const scannedEl = document.getElementById('scanned-vin');
+        const overlayEl = document.getElementById('scanned-vin-overlay');
+        
+        // 优先取拍照输入框的值
+        if (scannedEl && scannedEl.value.trim()) {
+            vin = scannedEl.value.trim().toUpperCase();
+        } else if (overlayEl && overlayEl.value.trim()) {
+            vin = overlayEl.value.trim().toUpperCase();
+        } else if (inputEl) {
+            vin = inputEl.value.trim().toUpperCase();
+        }
+        vin = vin.replace(/[^A-HJ-NPR-Z0-9]/g, '');
+        if (inputEl) inputEl.value = vin;
+        if (scannedEl) scannedEl.value = vin;
+        if (overlayEl) overlayEl.value = vin;
         queryByVin();
     }
     
@@ -950,6 +981,11 @@ const BATTERY_DB = {
 
     // [已废弃，由原生相机替代]
     function capturePhoto() {
+        // 初始化 canvas
+        if (!snapCanvas) {
+            snapCanvas = document.createElement('canvas');
+            snapCtx = snapCanvas.getContext('2d');
+        }
         const video = document.getElementById('scanner-video');
         const preview = document.getElementById('snap-preview');
         const hintEl = document.getElementById('scanner-hint');
@@ -1015,7 +1051,7 @@ const BATTERY_DB = {
             } catch(e) {
                 console.log('图像增强跳过:', e.message);
             }
-        })(););
+        })();
         
         // 显示输入确认区
         captured.classList.add('show');
