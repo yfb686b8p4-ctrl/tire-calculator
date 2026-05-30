@@ -371,22 +371,54 @@
 
         <!-- Tabs -->
         <div class="tabs">
-            <button class="tab active" onclick="switchTab('scan')">📷 扫码/VIN</button>
+            <button class="tab active" onclick="switchTab('scan')">📸 拍照识别</button>
             <button class="tab" onclick="switchTab('select')">🚗 车型选择</button>
         </div>
 
-        <!-- Tab 1: Scan / Manual VIN -->
+        <!-- Tab 1: 原生拍照OCR + 手动输入 -->
         <div id="tab-scan" class="tab-content active">
             <div class="card">
-                <h2>🔍 车架号查询</h2>
-                <div class="input-group">
-                    <label>车架号 (VIN)</label>
-                    <input type="text" id="vin-input" placeholder="输入17位车架号" maxlength="17" autocomplete="off" style="text-transform: uppercase;">
+                <h2>📸 拍照识别车架号</h2>
+                <p style="color:#aaa;font-size:0.85rem;text-align:center;margin-bottom:16px">
+                    拍下车架号，系统自动提取文字
+                </p>
+                
+                <!-- 原生相机入口 -->
+                <input type="file" id="native-camera" accept="image/*" capture="environment" style="display:none">
+                <input type="file" id="album-pick" accept="image/*" style="display:none">
+                
+                <button onclick="document.getElementById('native-camera').click()" style="width:100%;padding:18px;font-size:1.15rem;background:#f7b731;color:#1a1a2e;border:none;border-radius:14px;font-weight:bold;cursor:pointer">
+                    📸 拍照识别（自动提取文字）
+                </button>
+                <p style="color:#f7b731;font-size:0.8rem;text-align:center;margin:6px 0 14px">
+                    拍完自动弹出「识别文字」
+                </p>
+                
+                <button onclick="document.getElementById('album-pick').click()" style="width:100%;padding:14px;font-size:1rem;background:#1e3a5f;color:#f7b731;border:2px solid #f7b731;border-radius:14px;font-weight:bold;cursor:pointer">
+                    🖼️ 从相册选图
+                </button>
+                <p style="color:#888;font-size:0.8rem;text-align:center;margin:4px 0 16px">
+                    选相册中已拍的车架号照片
+                </p>
+                
+                <div style="border-top:1px solid #333;padding-top:16px;margin-top:4px">
+                    <p style="color:#aaa;font-size:0.85rem;text-align:center;margin-bottom:10px">— 或手动输入 —</p>
+                    <div class="input-group">
+                        <label>车架号 (VIN)</label>
+                        <input type="text" id="vin-input" placeholder="输入17位车架号" maxlength="17" autocomplete="off" style="text-transform: uppercase;">
+                    </div>
+                    <div class="error-msg" id="vin-error">车架号格式不正确，请输入17位VIN码</div>
+                    <button class="btn btn-primary" onclick="queryByVin()" style="width:100%;margin-top:10px">查询</button>
                 </div>
-                <div class="error-msg" id="vin-error">车架号格式不正确，请输入17位VIN码</div>
-                <div class="btn-row">
-                    <button class="btn btn-scan" onclick="startScanner()">📷 扫码识别</button>
-                    <button class="btn btn-primary" onclick="queryByVin()">查询</button>
+            </div>
+            
+            <!-- 拍照结果展示区 -->
+            <div id="photo-result" style="display:none;margin-top:16px" class="card">
+                <img id="result-img" style="width:100%;border-radius:8px" alt="拍照结果">
+                <div id="ocr-guide" style="color:#f7b731;font-size:0.9rem;text-align:center;padding:12px"></div>
+                <div style="display:flex;gap:8px;margin-top:8px">
+                    <input type="text" id="scanned-vin" placeholder="输入车架号" style="flex:1;padding:12px;border-radius:8px;border:2px solid #f7b731;background:#16213e;color:#f7b731;font-size:1rem;text-transform:uppercase;letter-spacing:1px;" oninput="this.value=this.value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g,'')">
+                    <button onclick="queryByVIN()" style="padding:12px 20px;background:#f7b731;color:#1a1a2e;border:none;border-radius:8px;font-weight:bold;font-size:1rem;cursor:pointer">查询</button>
                 </div>
             </div>
         </div>
@@ -841,56 +873,71 @@ const BATTERY_DB = {
     let snapCanvas = null;
     let snapCtx = null;
 
-    async function startScanner() {
-        const overlay = document.getElementById('scanner-overlay');
-        const video = document.getElementById('scanner-video');
-        const hintEl = document.getElementById('scanner-hint');
-        const controls = document.getElementById('scanner-controls');
+    // 初始化原生相机（触发系统级OCR）
+    function initNativeCamera() {
+        document.getElementById('native-camera').addEventListener('change', handleNativeCapture);
+        document.getElementById('album-pick').addEventListener('change', handleNativeCapture);
+    }
+    
+    // 处理原生相机返回的图片 → 图像增强 → 显示引导用户长按识别
+    function handleNativeCapture(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        e.target.value = '';
         
-        document.getElementById('scanner-captured').classList.remove('show');
-        document.getElementById('snap-preview').style.display = 'none';
-        video.style.display = 'block';
-        controls.style.display = 'flex';
-        hintEl.innerHTML = '📷 对准车架号，保持稳定，点击下方拍照';
-        
-        try {
-            // 尝试多个摄像头配置（后置优先，兼容前置）
-            let stream = null;
-            const configs = [
-                { video: { facingMode: { exact: 'environment' }, width: { ideal: 1280 } } },
-                { video: { facingMode: 'environment' } },
-                { video: { facingMode: 'user' } },
-                { video: true }
-            ];
-            for (const cfg of configs) {
-                try { stream = await navigator.mediaDevices.getUserMedia(cfg); break; } catch(e) {}
-            }
-            if (!stream) throw new Error('camera_unavailable');
-            
-            video.srcObject = stream;
-            video.setAttribute('playsinline', '');
-            video.setAttribute('autoplay', '');
-            await video.play().catch(() => {});
-            overlay.classList.add('show');
-            
-            snapCanvas = document.createElement('canvas');
-            snapCtx = snapCanvas.getContext('2d');
-            
-        } catch (err) {
-            console.error('Camera error:', err);
-            const msg = err.message || '';
-            if (/not.?allowed|permission|denied/i.test(msg)) {
-                alert('⚠️ 请允许相机权限\n\n操作：\n1. 点击右上角「···」\n2. 设置 → 允许摄像头\n3. 重新进入此页面');
-            } else if (/not.?found|no.?device/i.test(msg)) {
-                alert('📱 未检测到摄像头\n\n请直接手动输入17位车架号');
-            } else {
-                alert('📷 相机无法打开\n\n请直接手动输入17位车架号');
-            }
-            // 即使失败也显示界面，引导用户手动输入
-            overlay.classList.add('show');
-            controls.innerHTML = '<button class="btn btn-primary" onclick="showManualInput()" style="font-size:1.2rem;padding:16px 32px;">📝 手动输入车架号</button>';
-            hintEl.innerHTML = '⚠️ 摄像头不可用，请手动输入车架号';
-        }
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            const img = new Image();
+            img.onload = function() {
+                const w = img.naturalWidth || img.width;
+                const h = img.naturalHeight || img.height;
+                
+                // 1. 图像增强（对比度增强+区域裁剪）
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const cropW = Math.floor(w * 0.7);
+                const cropH = Math.floor(h * 0.2);
+                canvas.width = cropW * 2;
+                canvas.height = cropH * 2;
+                ctx.drawImage(img,
+                    Math.floor(w * 0.15), Math.floor(h * 0.35), cropW, cropH,  // 源：中间区域
+                    0, 0, cropW * 2, cropH * 2                                  // 目标：放大2倍
+                );
+                const id = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const d = id.data;
+                for (let i = 0; i < d.length; i += 4) {
+                    const f = 2.2;
+                    d[i]   = Math.min(255, Math.max(0, f * (d[i] - 128) + 128));
+                    d[i+1] = Math.min(255, Math.max(0, f * (d[i+1] - 128) + 128));
+                    d[i+2] = Math.min(255, Math.max(0, f * (d[i+2] - 128) + 128));
+                }
+                ctx.putImageData(id, 0, 0);
+                const enhanced = canvas.toDataURL('image/jpeg', 0.95);
+                
+                // 2. 显示增强后的图和输入框
+                const resultDiv = document.getElementById('photo-result');
+                document.getElementById('result-img').src = enhanced;
+                
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                const isAndroid = /Android/.test(navigator.userAgent);
+                const guide = isIOS ? '👆 长按图片 →「识别文字」提取车架号'
+                          : isAndroid ? '👆 长按图片 →「识别图片中的文字」提取车架号'
+                          : '👆 长按图片识别文字后，手动复制到下方输入框';
+                
+                document.getElementById('ocr-guide').innerHTML = guide;
+                resultDiv.style.display = 'block';
+                resultDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            };
+            img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+    
+    // queryByVIN: 兼容拍照后的输入框
+    function queryByVIN() {
+        const vin = (document.getElementById('scanned-vin') || document.getElementById('vin-input')).value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, '');
+        document.getElementById('vin-input').value = vin;
+        queryByVin();
     }
     
     function showManualInput() {
@@ -901,7 +948,7 @@ const BATTERY_DB = {
         }, 100);
     }
 
-    // ========== 拍照 ==========
+    // [已废弃，由原生相机替代]
     function capturePhoto() {
         const video = document.getElementById('scanner-video');
         const preview = document.getElementById('snap-preview');
