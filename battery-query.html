@@ -435,9 +435,9 @@
                     <button type="button" id="btn-reset-view" style="padding:10px 16px;background:#1e3a5f;color:#f7b731;border:1px solid #f7b731;border-radius:8px;font-size:0.9rem;cursor:pointer;">重置</button>
                 </div>
                 
-                <!-- VIN输入提示 -->
-                <p style="color:#888;font-size:0.85rem;text-align:center;margin:8px 0;">
-                    💡 VIN车架号通常位于挡风玻璃下方或车门框上，共17位
+                <!-- OCR状态提示 -->
+                <p id="ocr-guide" style="color:#f7b731;font-size:0.9rem;text-align:center;margin:8px 0;font-weight:bold;">
+                    🔄 正在自动识别车架号...
                 </p>
                 
                 <!-- VIN输入框 -->
@@ -1240,6 +1240,121 @@
         console.log('[initNativeCamera] 完成');
     }
     
+    // OCR.space API Key (免费额度: 每天500次)
+    var OCR_API_KEY = 'helloworld';
+    var lastOcrResult = null; // 保存最后一次识别的图片data URL
+    
+    // 自动OCR识别图片中的VIN
+    function autoRecognizeVin(file, imageDataUrl) {
+        console.log('[autoRecognizeVin] 开始OCR识别');
+        
+        // 显示加载状态
+        var hintEl = document.getElementById('ocr-guide');
+        if (hintEl) hintEl.innerHTML = '🔄 正在识别车架号...';
+        
+        // 调用OCR.space API
+        var formData = new FormData();
+        formData.append('apikey', OCR_API_KEY);
+        formData.append('language', 'eng');
+        formData.append('isTable', 'false');
+        formData.append('filetype', 'JPG');
+        formData.append('base64Image', imageDataUrl);
+        
+        fetch('https://api.ocr.space/parse/image', {
+            method: 'POST',
+            body: formData
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            console.log('[OCR] 响应:', data);
+            
+            if (data.IsErroredOnProcessing) {
+                throw new Error(data.ErrorMessage || 'OCR识别失败');
+            }
+            
+            var parsedText = '';
+            if (data.ParsedResults && data.ParsedResults.length > 0) {
+                parsedText = data.ParsedResults[0].ParsedText || '';
+            }
+            
+            console.log('[OCR] 识别文字:', parsedText);
+            
+            // 从识别结果中提取VIN
+            var vin = extractVinFromText(parsedText);
+            
+            if (vin) {
+                // 成功识别到VIN
+                var vinInput = document.getElementById('scanned-vin');
+                if (vinInput) {
+                    vinInput.value = vin;
+                    handleVinInput(vinInput);
+                }
+                if (hintEl) hintEl.innerHTML = '✅ 车架号已识别：' + vin + '<br><span style="font-size:0.8rem;color:#888;">请核对是否正确</span>';
+            } else {
+                // 未识别到VIN
+                if (hintEl) hintEl.innerHTML = '⚠️ 未识别到车架号<br><span style="font-size:0.8rem;">请手动输入或重新拍照</span>';
+            }
+        })
+        .catch(function(error) {
+            console.error('[OCR] 错误:', error);
+            if (hintEl) hintEl.innerHTML = '⚠️ 识别失败，请手动输入车架号';
+        });
+    }
+    
+    // 从OCR识别文字中提取VIN
+    function extractVinFromText(text) {
+        if (!text) return null;
+        
+        // VIN格式: 17位字母数字，不包含I/O/Q
+        // 常见VIN正则: [A-HJ-NPR-Z0-9]{17}
+        
+        // 方法1: 查找连续的17位VIN
+        var vin17 = text.match(/[A-HJ-NPR-Z0-9]{17}/i);
+        if (vin17) {
+            var candidate = vin17[0].toUpperCase();
+            // 验证VIN校验位（第9位）
+            if (isValidVin(candidate)) {
+                return candidate;
+            }
+        }
+        
+        // 方法2: 查找连续的12-17位VIN
+        var vin12to17 = text.match(/[A-HJ-NPR-Z0-9]{12,17}/gi);
+        if (vin12to17) {
+            for (var i = 0; i < vin12to17.length; i++) {
+                var candidate = vin12to17[i].toUpperCase();
+                // 过滤掉明显不是VIN的（包含太多相同字符等）
+                if (candidate.length >= 12 && !/[I O Q]/i.test(candidate)) {
+                    // 取第一个合理长度的候选
+                    return candidate.substring(0, 17);
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    // VIN校验位验证（第9位）
+    function isValidVin(vin) {
+        if (!vin || vin.length !== 17) return false;
+        
+        var translit = { A:1, B:2, C:3, D:4, E:5, F:6, G:7, H:8, J:1, K:2, L:3, M:4, N:5, P:7, R:9, S:2, T:3, U:4, V:5, W:6, X:7, Y:8, Z:9, 0:0, 1:1, 2:2, 3:3, 4:4, 5:5, 6:6, 7:7, 8:8, 9:9 };
+        var weights = [8,7,6,5,4,3,2,10,0,9,8,7,6,5,4,3,2];
+        
+        var sum = 0;
+        for (var i = 0; i < 17; i++) {
+            var char = vin.charAt(i).toUpperCase();
+            var value = translit[char];
+            if (value === undefined) return false;
+            sum += value * weights[i];
+        }
+        
+        var checkDigit = sum % 11;
+        if (checkDigit === 10) checkDigit = 'X';
+        
+        return vin.charAt(8) === String(checkDigit);
+    }
+    
     function handleNativeCapture(e) {
         console.log('[handleNativeCapture] 开始');
         // 重置图片视图
@@ -1250,19 +1365,27 @@
         
         var reader = new FileReader();
         reader.onload = function(ev) {
+            var imageDataUrl = ev.target.result;
+            
             var img = new Image();
             img.onload = function() {
                 // 方案C: 显示原图（可放大旋转查看VIN）
                 var resultDiv = document.getElementById('photo-result');
                 var resultImg = document.getElementById('result-img');
-                if (resultImg) resultImg.src = ev.target.result;
+                if (resultImg) resultImg.src = imageDataUrl;
                 
                 if (resultDiv) {
                     resultDiv.style.display = 'block';
                     resultDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
+                
+                // 保存图片用于后续处理
+                lastOcrResult = imageDataUrl;
+                
+                // 自动触发OCR识别
+                autoRecognizeVin(file, imageDataUrl);
             };
-            img.src = ev.target.result;
+            img.src = imageDataUrl;
         };
         reader.readAsDataURL(file);
         console.log('[handleNativeCapture] 完成');
@@ -1296,17 +1419,21 @@
             snapCanvas.height = vh;
             snapCtx.drawImage(video, 0, 0, vw, vh);
             
+            var imageDataUrl = snapCanvas.toDataURL('image/jpeg', 0.95);
+            
             if (preview) {
-                // 显示原图，不做增强（保证微信OCR能识别文字）
-                preview.src = snapCanvas.toDataURL('image/jpeg', 0.95);
+                preview.src = imageDataUrl;
                 preview.style.display = 'block';
             }
             if (video) video.style.display = 'none';
             if (controls) controls.style.display = 'none';
-            if (hintEl) hintEl.innerHTML = '📸 拍照完成！请使用下方按钮放大查看车架号，然后手动输入VIN';
+            if (hintEl) hintEl.innerHTML = '📸 拍照完成！正在识别车架号...';
             
-            // 不做图像增强，直接显示原图（让微信OCR能识别）
-            console.log('[capturePhoto] 跳过图像增强，保持原图');
+            // 保存图片用于后续处理
+            lastOcrResult = imageDataUrl;
+            
+            // 自动触发OCR识别
+            autoRecognizeVin(null, imageDataUrl);
             
             if (captured) captured.classList.add('show');
             
