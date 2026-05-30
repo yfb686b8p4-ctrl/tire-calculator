@@ -1228,41 +1228,19 @@
         reader.onload = function(ev) {
             var img = new Image();
             img.onload = function() {
-                var w = img.naturalWidth || img.width;
-                var h = img.naturalHeight || img.height;
-                
-                // 图像增强
-                var canvas = document.createElement('canvas');
-                var ctx = canvas.getContext('2d');
-                var cropW = Math.floor(w * 0.7);
-                var cropH = Math.floor(h * 0.2);
-                canvas.width = cropW * 2;
-                canvas.height = cropH * 2;
-                ctx.drawImage(img,
-                    Math.floor(w * 0.15), Math.floor(h * 0.35), cropW, cropH,
-                    0, 0, cropW * 2, cropH * 2
-                );
-                var id = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                var d = id.data;
-                for (var i = 0; i < d.length; i += 4) {
-                    var f = 2.2;
-                    d[i]   = Math.min(255, Math.max(0, f * (d[i] - 128) + 128));
-                    d[i+1] = Math.min(255, Math.max(0, f * (d[i+1] - 128) + 128));
-                    d[i+2] = Math.min(255, Math.max(0, f * (d[i+2] - 128) + 128));
-                }
-                ctx.putImageData(id, 0, 0);
-                var enhanced = canvas.toDataURL('image/jpeg', 0.95);
-                
-                // 显示增强后的图
+                // 直接显示原图（不做增强，保证微信OCR能识别）
                 var resultDiv = document.getElementById('photo-result');
                 var resultImg = document.getElementById('result-img');
-                if (resultImg) resultImg.src = enhanced;
+                if (resultImg) resultImg.src = ev.target.result;
                 
+                // 微信OCR引导（显示原图，微信能识别）
                 var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
                 var isAndroid = /Android/.test(navigator.userAgent);
-                var guide = isIOS ? '👆 长按图片 →「识别文字」提取车架号'
-                          : isAndroid ? '👆 长按图片 →「识别图片中的文字」提取车架号'
-                          : '👆 长按图片识别文字后，手动复制到下方输入框';
+                var guide = isIOS 
+                    ? '👆 <b>长按上方图片</b> → 点「识别文字」→ 复制17位车架号 → 粘贴到下方输入框'
+                    : isAndroid 
+                    ? '👆 <b>长按上方图片</b> → 点「识别图片中的文字」→ 复制17位车架号 → 粘贴到下方输入框'
+                    : '👆 长按上方图片识别文字，复制车架号后粘贴到下方输入框';
                 
                 var ocrGuide = document.getElementById('ocr-guide');
                 if (ocrGuide) ocrGuide.innerHTML = guide;
@@ -1306,41 +1284,16 @@
             snapCtx.drawImage(video, 0, 0, vw, vh);
             
             if (preview) {
-                preview.src = snapCanvas.toDataURL('image/jpeg', 0.9);
+                // 显示原图，不做增强（保证微信OCR能识别文字）
+                preview.src = snapCanvas.toDataURL('image/jpeg', 0.95);
                 preview.style.display = 'block';
             }
             if (video) video.style.display = 'none';
             if (controls) controls.style.display = 'none';
-            if (hintEl) hintEl.innerHTML = '📸 拍照完成！👇 长按下方图片可识别文字';
+            if (hintEl) hintEl.innerHTML = '📸 拍照完成！<br>👆 <b>长按上方图片</b> → 点「识别文字」→ 复制17位车架号 → 粘贴到下方输入框';
             
-            // 图像增强
-            (function enhanceImage() {
-                try {
-                    var enhCanvas = document.createElement('canvas');
-                    var enhCtx = enhCanvas.getContext('2d');
-                    var cropW = Math.floor(vw * 0.6);
-                    var cropH = Math.floor(vh * 0.25);
-                    var cropX = Math.floor((vw - cropW) / 2);
-                    var cropY = Math.floor(vh * 0.35);
-                    enhCanvas.width = cropW * 2;
-                    enhCanvas.height = cropH * 2;
-                    enhCtx.drawImage(snapCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW*2, cropH*2);
-                    
-                    var imgData = enhCtx.getImageData(0, 0, enhCanvas.width, enhCanvas.height);
-                    var d = imgData.data;
-                    for (var i = 0; i < d.length; i += 4) {
-                        var f = 2.0;
-                        d[i]   = Math.min(255, Math.max(0, f * (d[i] - 128) + 128));
-                        d[i+1] = Math.min(255, Math.max(0, f * (d[i+1] - 128) + 128));
-                        d[i+2] = Math.min(255, Math.max(0, f * (d[i+2] - 128) + 128));
-                    }
-                    enhCtx.putImageData(imgData, 0, 0);
-                    
-                    if (preview) preview.src = enhCanvas.toDataURL('image/jpeg', 0.95);
-                } catch(e) {
-                    console.log('图像增强跳过:', e.message);
-                }
-            })();
+            // 不做图像增强，直接显示原图（让微信OCR能识别）
+            console.log('[capturePhoto] 跳过图像增强，保持原图');
             
             if (captured) captured.classList.add('show');
             
