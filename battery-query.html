@@ -7,6 +7,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a1a2e">
     <title>电池型号查询 - Battery Finder</title>
+    <!-- 轻量OCR: Tesseract.js v4 (仅英文数字识别, ~2MB) -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
+
     <!-- 轻量方案：不依赖重型OCR库，使用原生拍照+手动确认 -->
     <style>
         * {
@@ -916,9 +919,9 @@ const BATTERY_DB = {
         }
         
         if (!video.videoWidth || !video.videoHeight) {
-            // 尝试从视频元素直接截图
             hintEl.innerHTML = '📸 已拍照，请输入车架号';
-        }        if (!video.videoWidth) return;
+        }
+        if (!video.videoWidth) return;
         
         // 振动反馈
         if (navigator.vibrate) navigator.vibrate(100);
@@ -935,7 +938,45 @@ const BATTERY_DB = {
         preview.style.display = 'block';
         video.style.display = 'none';
         controls.style.display = 'none';
-        hintEl.innerHTML = '✅ 拍照成功！请在下方输入/修正车架号';
+        hintEl.innerHTML = '🔄 AI识别中... (约3-5秒)';
+        
+        // ========== 自动OCR识别车架号 ==========
+        (async function autoOCR() {
+            try {
+                // 图像预处理：转base64
+                const imgData = snapCanvas.toDataURL('image/jpeg', 0.9);
+                
+                // 使用 Tesseract.js 识别（仅英文数字，轻量）
+                const result = await Tesseract.recognize(imgData, 'eng', {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            const pct = Math.round(m.progress * 100);
+                            hintEl.innerHTML = '🔄 AI识别中... ' + pct + '%';
+                        }
+                    }
+                });
+                
+                // 提取识别结果，过滤出VIN格式（17位字母数字）
+                let text = result.data.text.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                
+                // 尝试提取17位连续字母数字串
+                let vinMatch = text.match(/[A-HJ-NPR-Z0-9]{17}/);
+                if (vinMatch) {
+                    document.getElementById('scanned-vin').value = vinMatch[0];
+                    hintEl.innerHTML = '✅ 识别成功！请确认/修正车架号';
+                } else if (text.length >= 10) {
+                    // 取最长的连续串
+                    document.getElementById('scanned-vin').value = text.substring(0, 17);
+                    hintEl.innerHTML = '⚠️ 识别可能不准，请修正车架号';
+                } else {
+                    hintEl.innerHTML = '⚠️ 未能自动识别，请手动输入车架号';
+                }
+                
+            } catch (err) {
+                console.error('OCR error:', err);
+                hintEl.innerHTML = '⚠️ 自动识别失败，请手动输入车架号';
+            }
+        })();
         
         // 显示输入确认区
         captured.classList.add('show');
