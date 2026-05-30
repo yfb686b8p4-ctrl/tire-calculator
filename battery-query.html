@@ -397,6 +397,7 @@
                         style="width:100%;padding:16px;font-size:1.15rem;margin-top:10px;">
                     🔍 查询电池型号
                 </button>
+
                 
                 <!-- 分隔线 -->
                 <div style="border-top:1px solid #333;margin:20px 0 16px;padding-top:16px;">
@@ -797,42 +798,52 @@ const BATTERY_DB = {
         };
     }
 
-    function queryByVin() {
-        const vin = document.getElementById('vin-input').value.trim().toUpperCase();
-        const errorEl = document.getElementById('vin-error');
-        
-        if (!validateVin(vin)) {
-            errorEl.classList.add('show');
-            return;
-        }
-        errorEl.classList.remove('show');
-        
-        const decoded = decodeVin(vin);
-        
-        // 如果能匹配品牌，尝试返回该品牌最常见车型
-        if (decoded.matchedBrand) {
-            const brandData = BATTERY_DB[decoded.matchedBrand];
-            const firstSeries = Object.keys(brandData)[0];
-            const data = brandData[firstSeries];
+        function queryByVin() {
+        try {
+            const vinEl = document.getElementById('vin-input');
+            if (!vinEl) { alert('错误：找不到VIN输入框'); return; }
+            const vin = vinEl.value.trim().toUpperCase();
             
-            showResult({
-                vehicle: `${decoded.maker} | VIN: ${vin}`,
-                battery: data.battery,
-                specs: data.specs,
-                alts: data.alts || []
-            });
-        } else {
-            // 未能匹配，提示用户使用车型选择
-            showResult({
-                vehicle: `品牌: ${decoded.maker} | VIN: ${vin}`,
-                battery: '需通过VIN确认品牌后查询',
-                specs: '建议：使用「车型选择」功能直接选择您的车型',
-                alts: []
-            });
+            if (!vin) { alert('请输入车架号'); return; }
+            
+            const errorEl = document.getElementById('vin-error');
+            if (!validateVin(vin)) {
+                if (errorEl) errorEl.classList.add('show');
+                alert('车架号格式不正确
+要求：12-17位（字母A-Z不含I/O/Q + 数字）
+您输入了' + vin.length + '位：' + vin);
+                return;
+            }
+            if (errorEl) errorEl.classList.remove('show');
+            
+            const decoded = decodeVin(vin);
+            
+            if (decoded.matchedBrand && BATTERY_DB[decoded.matchedBrand]) {
+                const brandData = BATTERY_DB[decoded.matchedBrand];
+                const firstSeries = Object.keys(brandData)[0];
+                const data = brandData[firstSeries];
+                
+                showResult({
+                    vehicle: decoded.maker + ' | VIN: ' + vin,
+                    battery: data.battery,
+                    specs: data.specs,
+                    alts: data.alts || []
+                });
+            } else {
+                showResult({
+                    vehicle: '品牌: ' + decoded.maker + ' | VIN: ' + vin,
+                    battery: '需通过VIN确认品牌后查询',
+                    specs: '建议：使用「车型选择」功能直接选择您的车型',
+                    alts: []
+                });
+            }
+        } catch(e) {
+            alert('查询出错: ' + e.message);
+            console.error('[queryByVin]', e);
         }
     }
 
-    // ============ 车型查询 ============
+        // ============ 车型查询 ============
     function queryByVehicle() {
         const brand = document.getElementById('brand-select').value;
         const series = document.getElementById('series-select').value;
@@ -861,27 +872,43 @@ const BATTERY_DB = {
 
     // ============ 显示结果 ============
     function showResult(result) {
-        const card = document.getElementById('result-card');
-        
-        document.getElementById('vehicle-info').innerHTML = `
-            <strong>📍 车型:</strong> <span class="vin-display">${result.vehicle}</span>
-        `;
-        
-        document.getElementById('battery-model').textContent = result.battery;
-        document.getElementById('battery-specs').innerHTML = result.specs.replace(/\|/g, '<br>').replace(/规格:/g, '<span>规格:</span>').replace(/极性:/g, '<span>极性:</span>').replace(/冷启动电流:/g, '<span>冷启动电流:</span>').replace(/启停/g, '<span>启停</span>');
-        
-        const altsContainer = document.getElementById('alt-models');
-        if (result.alts && result.alts.length > 0) {
-            document.getElementById('result-alts').style.display = 'block';
-            altsContainer.innerHTML = result.alts.map(alt => 
-                `<span class="alt-item">${alt}</span>`
-            ).join('');
-        } else {
-            document.getElementById('result-alts').style.display = 'none';
+        try {
+            console.log('[showResult] 开始显示结果:', result);
+            const card = document.getElementById('result-card');
+            if (!card) { console.error('[showResult] 找不到 result-card'); return; }
+            
+            const vehicleInfo = document.getElementById('vehicle-info');
+            if (vehicleInfo) vehicleInfo.innerHTML = `
+                <strong>📍 车型:</strong> <span class="vin-display">${result.vehicle}</span>
+            `;
+            
+            const batteryModel = document.getElementById('battery-model');
+            if (batteryModel) batteryModel.textContent = result.battery;
+            
+            const batterySpecs = document.getElementById('battery-specs');
+            if (batterySpecs) batterySpecs.innerHTML = (result.specs || '').replace(/\|/g, '<br>').replace(/规格:/g, '<span>规格:</span>').replace(/极性:/g, '<span>极性:</span>').replace(/冷启动电流:/g, '<span>冷启动电流:</span>').replace(/启停/g, '<span>启停</span>');
+            
+            const altsDiv = document.getElementById('alt-models');
+            const altsWrapper = document.getElementById('result-alts');
+            if (altsDiv && altsWrapper) {
+                if (result.alts && result.alts.length > 0) {
+                    altsWrapper.style.display = 'block';
+                    altsDiv.innerHTML = result.alts.map(alt => 
+                        `<span class="alt-item">${alt}</span>`
+                    ).join('');
+                } else {
+                    altsWrapper.style.display = 'none';
+                    altsDiv.innerHTML = '';
+                }
+            }
+            
+            card.classList.add('show');
+            card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            console.log('[showResult] 显示完成');
+        } catch(e) {
+            console.error('[showResult] 错误:', e);
+            alert('显示结果时出错: ' + e.message);
         }
-        
-        card.classList.add('show');
-        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     // ============ 扫码功能 (轻量拍照+确认模式) ============
