@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>电池型号查询 - Battery Finder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 16px;
+            padding-bottom: 100px;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            color: #f7b731;
+            font-size: 1.8rem;
+            margin-bottom: 4px;
+            text-shadow: 0 2px 4px rgba(247, 183, 49, 0.3);
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+        }
+        .card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(247, 183, 49, 0.2);
+            margin-bottom: 16px;
+        }
+        .card h2 {
+            color: #f7b731;
+            font-size: 1.1rem;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .input-group { margin-bottom: 14px; }
+        .input-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: #b0b0b0;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #2d3a5a;
+            border-radius: 10px;
+            background: #1a1a2e;
+            color: #fff;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #f7b731;
+        }
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+        .btn {
+            flex: 1;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #f7b731, #faa61a);
+            color: #1a1a2e;
+        }
+        .btn-primary:active { transform: scale(0.98); opacity: 0.9; }
+        .btn-secondary {
+            background: #2d3a5a;
+            color: #e0e0e0;
+        }
+        .btn-secondary:active { background: #3d4a6a; }
+        .btn-scan {
+            background: linear-gradient(135deg, #00b894, #00a884);
+            color: #fff;
+        }
+        .result-card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 2px solid #00b894;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .result-card.show { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .result-title {
+            color: #00b894;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .result-battery {
+            background: #1a1a2e;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-left: 4px solid #f7b731;
+        }
+        .result-battery .model {
+            color: #f7b731;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .result-battery .specs {
+            color: #aaa;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        .result-battery .specs span {
+            color: #fff;
+            font-weight: 500;
+        }
+        .result-alts {
+            background: #1a1a2e;
+            border-radius: 10px;
+            padding: 14px;
+            border-left: 4px solid #6c5ce7;
+        }
+        .result-alts .alts-title {
+            color: #6c5ce7;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+        .result-alts .alt-item {
+            display: inline-block;
+            background: #2d3a5a;
+            color: #e0e0e0;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            margin: 4px 4px 4px 0;
+        }
+        .vehicle-info {
+            background: #1a1a2e;
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        .vehicle-info .vin-display {
+            color: #f7b731;
+            font-family: monospace;
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+        }
+        /* Scanner overlay */
+        .scanner-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #000;
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+        }
+        .scanner-overlay.show { display: flex; }
+        .scanner-header {
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.8);
+        }
+        .scanner-header h3 {
+            color: #fff;
+            font-size: 1rem;
+        }
+        .scanner-close {
+            background: #e63946;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .scanner-video-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        #scanner-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .scanner-frame {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 300px;
+            height: 80px;
+            border: 3px solid #00b894;
+            border-radius: 8px;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+        }
+        .scanner-frame::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #00b894;
+            animation: scanLine 2s linear infinite;
+        }
+        @keyframes scanLine {
+            0%, 100% { top: 0; }
+            50% { top: calc(100% - 3px); }
+        }
+        .scanner-hint {
+            padding: 20px;
+            text-align: center;
+            background: rgba(0,0,0,0.8);
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        .scanner-captured {
+            display: none;
+            padding: 16px;
+            background: #1a1a2e;
+        }
+        .scanner-captured.show { display: block; }
+        .scanner-captured input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #2d3a5a;
+            border-radius: 8px;
+            background: #16213e;
+            color: #f7b731;
+            font-family: monospace;
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+        .scanner-captured .btn-row { margin-top: 12px; }
+        /* Tab switcher */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .tab {
+            flex: 1;
+            padding: 12px;
+            background: #2d3a5a;
+            border: none;
+            border-radius: 10px;
+            color: #aaa;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background: linear-gradient(135deg, #f7b731, #faa61a);
+            color: #1a1a2e;
+            font-weight: 600;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        /* Loading state */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f7b731;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        /* Error state */
+        .error-msg {
+            background: rgba(230, 57, 70, 0.2);
+            border: 1px solid #e63946;
+            border-radius: 8px;
+            padding: 12px;
+            color: #e63946;
+            font-size: 0.9rem;
+            margin-top: 12px;
+            display: none;
+        }
+        .error-msg.show { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔋 电池型号查询</h1>
+        <p class="subtitle">输入车架号或选择车型，秒查适配电池</p>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('scan')">📷 扫码/VIN</button>
+            <button class="tab" onclick="switchTab('select')">🚗 车型选择</button>
+        </div>
+
+        <!-- Tab 1: Scan / Manual VIN -->
+        <div id="tab-scan" class="tab-content active">
+            <div class="card">
+                <h2>🔍 车架号查询</h2>
+                <div class="input-group">
+                    <label>车架号 (VIN)</label>
+                    <input type="text" id="vin-input" placeholder="输入17位车架号" maxlength="17" autocomplete="off" style="text-transform: uppercase;">
+                </div>
+                <div class="error-msg" id="vin-error">车架号格式不正确，请输入17位VIN码</div>
+                <div class="btn-row">
+                    <button class="btn btn-scan" onclick="startScanner()">📷 扫码识别</button>
+                    <button class="btn btn-primary" onclick="queryByVin()">查询</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Vehicle Select -->
+        <div id="tab-select" class="tab-content">
+            <div class="card">
+                <h2>🚗 选择车型</h2>
+                <div class="input-group">
+                    <label>品牌</label>
+                    <select id="brand-select" onchange="onBrandChange()">
+                        <option value="">-- 请选择品牌 --</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>车系</label>
+                    <select id="series-select" onchange="onSeriesChange()" disabled>
+                        <option value="">-- 先选品牌 --</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>年份</label>
+                    <select id="year-select" disabled>
+                        <option value="">-- 先选车系 --</option>
+                    </select>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="queryByVehicle()" style="flex:2">查询电池型号</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Area -->
+        <div class="result-card" id="result-card">
+            <div class="result-title">✅ 查询结果</div>
+            <div class="vehicle-info" id="vehicle-info"></div>
+            <div class="result-battery">
+                <div class="model" id="battery-model"></div>
+                <div class="specs" id="battery-specs"></div>
+            </div>
+            <div class="result-alts" id="result-alts">
+                <div class="alts-title">💡 替代型号</div>
+                <div id="alt-models"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scanner Overlay -->
+    <div class="scanner-overlay" id="scanner-overlay">
+        <div class="scanner-header">
+            <h3>📷 扫描车架号</h3>
+            <button class="scanner-close" onclick="closeScanner()">关闭</button>
+        </div>
+        <div class="scanner-video-container">
+            <video id="scanner-video" autoplay playsinline></video>
+            <div class="scanner-frame"></div>
+        </div>
+        <div class="scanner-hint">
+            将车架号对准框内，保持稳定
+        </div>
+        <div class="scanner-captured" id="scanner-captured">
+            <div class="input-group">
+                <label>识别到的车架号</label>
+                <input type="text" id="scanned-vin" maxlength="17" style="text-transform: uppercase;">
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-secondary" onclick="rescan()">重新扫描</button>
+                <button class="btn btn-primary" onclick="confirmScan()">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ============ 电池数据库 ============
+    const BATTERY_DB = {
+        // 大众
+        '大众': {
+            '朗逸': { years: ['2020-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | 极性: 极性朝向右侧', alts: ['风帆Sail 6-QW-60', '骆驼6-QW-60', '瓦尔塔H5 560 150 060'] },
+            '宝来': { years: ['2019-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | 冷启动电流: 540A', alts: ['风帆6-QW-60', '统一6-QW-60', '超威6-QW-60'] },
+            '速腾': { years: ['2020-2024'], battery: '12V 72Ah', specs: '规格: 278×175×190mm | 极性: 极性朝向右侧', alts: ['风帆Sail 6-QW-72', '骆驼6-QW-72', '瓦尔塔H6 570 150 064'] },
+            '帕萨特': { years: ['2019-2024'], battery: '12V 72Ah', specs: '规格: 278×175×190mm | 启停功能支持', alts: ['风帆6-QW-72 AGM', '瓦尔塔H7 680 150 082', '博世S6 AGM'] },
+            '迈腾': { years: ['2018-2024'], battery: '12V 72Ah', specs: '规格: 278×175×190mm | 启停系统兼容', alts: ['风帆6-QW-72 AGM', '瓦尔塔H7 AGM', '骆驼AGM 6-QW-72'] },
+        },
+        // 丰田
+        '丰田': {
+            '卡罗拉': { years: ['2019-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm | 极性: 极性朝向右侧', alts: ['汤浅6-QW-70', '统一6-QW-70', '风帆6-QW-70'] },
+            '凯美瑞': { years: ['2018-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm | 启停支持', alts: ['汤浅6-QW-70L', '统一6-QW-70', '骆驼6-QW-70'] },
+            'RAV4荣放': { years: ['2019-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm | 极性: 左侧', alts: ['汤浅6-QW-70', '风帆6-QW-70', '超威6-QW-70'] },
+            '亚洲龙': { years: ['2019-2024'], battery: '12V 80Ah', specs: '规格: 315×175×190mm | 启停系统', alts: ['瓦尔塔H8 800 150 110', '风帆6-QW-80', '汤浅6-QW-80'] },
+            '汉兰达': { years: ['2018-2024'], battery: '12V 80Ah', specs: '规格: 315×175×190mm | 四驱版更大容量', alts: ['瓦尔塔H8', '汤浅6-QW-80', '统一6-QW-80'] },
+            '雷凌': { years: ['2020-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm | 极性: 右侧', alts: ['汤浅6-QW-70', '风帆6-QW-70', '骆驼6-QW-70'] },
+        },
+        // 本田
+        '本田': {
+            '思域': { years: ['2019-2024'], battery: '12V 60Ah', specs: '规格: 243×175×175mm | 极性: 左侧', alts: ['统一6-QW-60', '风帆6-QW-60', '汤浅6-QW-60'] },
+            'CR-V': { years: ['2018-2024'], battery: '12V 65Ah', specs: '规格: 230×175×220mm | 极性: 左侧', alts: ['统一6-QW-65', '风帆6-QW-65', '汤浅6-QW-65'] },
+            '雅阁': { years: ['2018-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm | 启停支持', alts: ['统一6-QW-70', '汤浅6-QW-70', '风帆6-QW-70'] },
+            '皓影': { years: ['2020-2024'], battery: '12V 65Ah', specs: '规格: 230×175×220mm | 极性: 左侧', alts: ['统一6-QW-65', '风帆6-QW-65', '汤浅6-QW-65'] },
+            '飞度': { years: ['2020-2024'], battery: '12V 45Ah', specs: '规格: 238×129×203mm | 极性: 右侧', alts: ['统一6-QW-45', '风帆6-QW-45', '超威6-QW-45'] },
+        },
+        // 宝马
+        '宝马': {
+            '3系': { years: ['2019-2024'], battery: '12V 90Ah AGM', specs: '规格: 354×175×190mm | 启停系统必备AGM', alts: ['瓦尔塔H9 900 150 105 AGM', '博世S9 AGM', '风帆6-QW-90 AGM'] },
+            '5系': { years: ['2018-2024'], battery: '12V 90Ah AGM', specs: '规格: 354×175×190mm | 启停系统', alts: ['瓦尔塔H9 AGM', '博世S9 AGM', '风帆AGM 6-QW-90'] },
+            'X3': { years: ['2019-2024'], battery: '12V 90Ah AGM', specs: '规格: 354×175×190mm | 四驱系统', alts: ['瓦尔塔H9 AGM', '博世S9 AGM', '风帆AGM'] },
+            'X5': { years: ['2018-2024'], battery: '12V 100Ah AGM', specs: '规格: 394×175×190mm | 大型SUV', alts: ['瓦尔塔H10 AGM', '博世S10 AGM', '风帆6-QW-100 AGM'] },
+        },
+        // 奔驰
+        '奔驰': {
+            'C级': { years: ['2019-2024'], battery: '12V 80Ah AGM', specs: '规格: 315×175×190mm | 启停必备', alts: ['瓦尔塔H8 AGM', '博世S8 AGM', '风帆AGM 6-QW-80'] },
+            'E级': { years: ['2018-2024'], battery: '12V 92Ah AGM', specs: '规格: 354×175×190mm | 启停系统', alts: ['瓦尔塔H9 AGM', '博世S9 AGM', '风帆AGM 6-QW-92'] },
+            'GLC': { years: ['2019-2024'], battery: '12V 92Ah AGM', specs: '规格: 354×175×190mm | SUV', alts: ['瓦尔塔H9 AGM', '博世S9 AGM', '风帆AGM'] },
+            'S级': { years: ['2018-2024'], battery: '12V 100Ah AGM', specs: '规格: 394×175×190mm | 旗舰车型', alts: ['瓦尔塔H10 AGM', '博世S10 AGM', '风帆AGM 6-QW-100'] },
+        },
+        // 奥迪
+        '奥迪': {
+            'A4L': { years: ['2019-2024'], battery: '12V 80Ah AGM', specs: '规格: 315×175×190mm | 启停系统', alts: ['瓦尔塔H8 AGM', '风帆AGM 6-QW-80', '博世S8 AGM'] },
+            'A6L': { years: ['2018-2024'], battery: '12V 92Ah AGM', specs: '规格: 354×175×190mm | 启停支持', alts: ['瓦尔塔H9 AGM', '风帆AGM 6-QW-92', '博世S9 AGM'] },
+            'Q5L': { years: ['2019-2024'], battery: '12V 80Ah AGM', specs: '规格: 315×175×190mm | SUV', alts: ['瓦尔塔H8 AGM', '风帆AGM', '博世S8 AGM'] },
+            'Q3': { years: ['2019-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm', alts: ['瓦尔塔H7', '风帆6-QW-70', '博世S7'] },
+        },
+        // 别克
+        '别克': {
+            '英朗': { years: ['2019-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | 极性: 右侧', alts: ['统一6-QW-60', '风帆6-QW-60', '骆驼6-QW-60'] },
+            '威朗': { years: ['2020-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm', alts: ['统一6-QW-60', '风帆6-QW-60', '超威6-QW-60'] },
+            '君威': { years: ['2018-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm', alts: ['统一6-QW-70', '风帆6-QW-70', '骆驼6-QW-70'] },
+            '君越': { years: ['2018-2024'], battery: '12V 72Ah', specs: '规格: 278×175×190mm', alts: ['统一6-QW-72', '风帆6-QW-72', '瓦尔塔H6'] },
+            'GL8': { years: ['2018-2024'], battery: '12V 80Ah', specs: '规格: 315×175×190mm | MPV', alts: ['统一6-QW-80', '风帆6-QW-80', '骆驼6-QW-80'] },
+            '昂科威': { years: ['2018-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm | SUV', alts: ['统一6-QW-70', '风帆6-QW-70', '超威6-QW-70'] },
+            '昂科旗': { years: ['2020-2024'], battery: '12V 80Ah', specs: '规格: 315×175×190mm | 大型SUV', alts: ['统一6-QW-80', '风帆6-QW-80', '瓦尔塔H8'] },
+        },
+        // 日产
+        '日产': {
+            '轩逸': { years: ['2019-2024'], battery: '12V 55Ah', specs: '规格: 243×175×190mm | 极性: 左侧', alts: ['统一6-QW-55', '风帆6-QW-55', '超威6-QW-55'] },
+            '天籁': { years: ['2019-2024'], battery: '12V 65Ah', specs: '规格: 230×175×220mm | 极性: 左侧', alts: ['统一6-QW-65', '风帆6-QW-65', '骆驼6-QW-65'] },
+            '逍客': { years: ['2019-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm', alts: ['统一6-QW-60', '风帆6-QW-60', '超威6-QW-60'] },
+            '奇骏': { years: ['2018-2024'], battery: '12V 65Ah', specs: '规格: 230×175×220mm | SUV', alts: ['统一6-QW-65', '风帆6-QW-65', '骆驼6-QW-65'] },
+            '骐达': { years: ['2019-2024'], battery: '12V 45Ah', specs: '规格: 238×129×203mm', alts: ['统一6-QW-45', '风帆6-QW-45', '超威6-QW-45'] },
+        },
+        // 福特
+        '福特': {
+            '福克斯': { years: ['2019-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm', alts: ['统一6-QW-60', '风帆6-QW-60', '骆驼6-QW-60'] },
+            '蒙迪欧': { years: ['2018-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm', alts: ['统一6-QW-70', '风帆6-QW-70', '骆驼6-QW-70'] },
+            '锐界': { years: ['2018-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm | SUV', alts: ['统一6-QW-70', '风帆6-QW-70', '超威6-QW-70'] },
+            '探险者': { years: ['2020-2024'], battery: '12V 80Ah', specs: '规格: 315×175×190mm | 大型SUV', alts: ['瓦尔塔H8', '统一6-QW-80', '风帆6-QW-80'] },
+            'Mustang': { years: ['2019-2024'], battery: '12V 72Ah', specs: '规格: 278×175×190mm', alts: ['瓦尔塔H6', '统一6-QW-72', '风帆6-QW-72'] },
+        },
+        // 雪佛兰
+        '雪佛兰': {
+            '科鲁泽': { years: ['2020-2024'], battery: '12V 55Ah', specs: '规格: 243×175×190mm', alts: ['统一6-QW-55', '风帆6-QW-55', '超威6-QW-55'] },
+            '迈锐宝': { years: ['2018-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm', alts: ['统一6-QW-70', '风帆6-QW-70', '骆驼6-QW-70'] },
+            '探界者': { years: ['2018-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm | SUV', alts: ['统一6-QW-70', '风帆6-QW-70', '超威6-QW-70'] },
+            '开拓者': { years: ['2020-2024'], battery: '12V 80Ah', specs: '规格: 315×175×190mm | 大型SUV', alts: ['统一6-QW-80', '风帆6-QW-80', '瓦尔塔H8'] },
+        },
+        // 特斯拉
+        '特斯拉': {
+            'Model 3': { years: ['2019-2024'], battery: '12V 33Ah Li-ion', specs: '低压辅助电池 | 锂电池不可替换普通铅酸', alts: ['原装12V锂电池 33Ah', '注意: 需专业更换不建议自行操作'] },
+            'Model Y': { years: ['2021-2024'], battery: '12V 33Ah Li-ion', specs: '低压辅助电池 | 锂电池', alts: ['原装12V锂电池 33Ah', '需Tesla认证技师更换'] },
+            'Model S': { years: ['2019-2024'], battery: '12V 33Ah Li-ion', specs: '低压辅助电池 | 锂电池', alts: ['原装12V锂电池', '需专业更换'] },
+            'Model X': { years: ['2019-2024'], battery: '12V 33Ah Li-ion', specs: '低压辅助电池 | 锂电池', alts: ['原装12V锂电池', '需专业更换'] },
+        },
+        // 比亚迪
+        '比亚迪': {
+            '秦Plus': { years: ['2021-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | DM-i车型', alts: ['统一6-QW-60', '风帆6-QW-60', '骆驼6-QW-60'] },
+            '汉': { years: ['2020-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm | EV/DM', alts: ['统一6-QW-70', '风帆6-QW-70', '瓦尔塔H7'] },
+            '唐': { years: ['2019-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm | SUV', alts: ['统一6-QW-70', '风帆6-QW-70', '超威6-QW-70'] },
+            '宋Plus': { years: ['2020-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | DM-i', alts: ['统一6-QW-60', '风帆6-QW-60', '骆驼6-QW-60'] },
+            '海豚': { years: ['2021-2024'], battery: '12V 45Ah', specs: '规格: 238×129×203mm | 纯电', alts: ['统一6-QW-45', '风帆6-QW-45', '超威6-QW-45'] },
+            '元Plus': { years: ['2022-2024'], battery: '12V 45Ah', specs: '规格: 238×129×203mm | 纯电', alts: ['统一6-QW-45', '风帆6-QW-45', '超威6-QW-45'] },
+        },
+        // 蔚来
+        '蔚来': {
+            'ES6': { years: ['2019-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm', alts: ['统一6-QW-60', '风帆6-QW-60', '瓦尔塔H5'] },
+            'ES8': { years: ['2019-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm | 大型SUV', alts: ['统一6-QW-70', '风帆6-QW-70', '瓦尔塔H7'] },
+            'EC6': { years: ['2020-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm', alts: ['统一6-QW-60', '风帆6-QW-60', '瓦尔塔H5'] },
+            'ET7': { years: ['2022-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm', alts: ['统一6-QW-60', '风帆6-QW-60', '瓦尔塔H5'] },
+        },
+        // 小鹏
+        '小鹏': {
+            'P7': { years: ['2020-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm', alts: ['统一6-QW-60', '风帆6-QW-60', '瓦尔塔H5'] },
+            'G3': { years: ['2019-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | SUV', alts: ['统一6-QW-60', '风帆6-QW-60', '超威6-QW-60'] },
+            'P5': { years: ['2022-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm', alts: ['统一6-QW-60', '风帆6-QW-60', '瓦尔塔H5'] },
+            'G9': { years: ['2022-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm | 大型SUV', alts: ['统一6-QW-70', '风帆6-QW-70', '瓦尔塔H7'] },
+        },
+        // 理想
+        '理想': {
+            'ONE': { years: ['2019-2023'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | 增程式', alts: ['统一6-QW-60', '风帆6-QW-60', '瓦尔塔H5'] },
+            'L8': { years: ['2022-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm', alts: ['统一6-QW-60', '风帆6-QW-60', '瓦尔塔H5'] },
+            'L9': { years: ['2022-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | 大型SUV', alts: ['统一6-QW-60', '风帆6-QW-60', '瓦尔塔H5'] },
+        },
+        // 吉利
+        '吉利': {
+            '帝豪': { years: ['2019-2024'], battery: '12V 55Ah', specs: '规格: 243×175×190mm', alts: ['统一6-QW-55', '风帆6-QW-55', '超威6-QW-55'] },
+            '博越': { years: ['2018-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | SUV', alts: ['统一6-QW-60', '风帆6-QW-60', '骆驼6-QW-60'] },
+            '星越': { years: ['2019-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm', alts: ['统一6-QW-60', '风帆6-QW-60', '瓦尔塔H5'] },
+            '星瑞': { years: ['2020-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm', alts: ['统一6-QW-60', '风帆6-QW-60', '瓦尔塔H5'] },
+            '领克03': { years: ['2019-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm', alts: ['统一6-QW-60', '风帆6-QW-60', '瓦尔塔H5'] },
+            '领克01': { years: ['2018-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | SUV', alts: ['统一6-QW-60', '风帆6-QW-60', '瓦尔塔H5'] },
+        },
+        // 长城
+        '长城': {
+            '哈佛H6': { years: ['2019-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | SUV', alts: ['统一6-QW-60', '风帆6-QW-60', '骆驼6-QW-60'] },
+            '哈佛大狗': { years: ['2020-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | SUV', alts: ['统一6-QW-60', '风帆6-QW-60', '超威6-QW-60'] },
+            '坦克300': { years: ['2021-2024'], battery: '12V 80Ah', specs: '规格: 315×175×190mm | 越野', alts: ['统一6-QW-80', '风帆6-QW-80', '瓦尔塔H8'] },
+            '欧拉好猫': { years: ['2021-2024'], battery: '12V 45Ah', specs: '规格: 238×129×203mm | 纯电', alts: ['统一6-QW-45', '风帆6-QW-45', '超威6-QW-45'] },
+            '炮': { years: ['2020-2024'], battery: '12V 80Ah', specs: '规格: 315×175×190mm | 皮卡', alts: ['统一6-QW-80', '风帆6-QW-80', '瓦尔塔H8'] },
+        },
+        // 长安
+        '长安': {
+            '逸动': { years: ['2019-2024'], battery: '12V 55Ah', specs: '规格: 243×175×190mm', alts: ['统一6-QW-55', '风帆6-QW-55', '超威6-QW-55'] },
+            'CS75': { years: ['2018-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | SUV', alts: ['统一6-QW-60', '风帆6-QW-60', '骆驼6-QW-60'] },
+            'CS55': { years: ['2019-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | SUV', alts: ['统一6-QW-60', '风帆6-QW-60', '超威6-QW-60'] },
+            'UNI-T': { years: ['2020-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm', alts: ['统一6-QW-60', '风帆6-QW-60', '瓦尔塔H5'] },
+            'UNI-V': { years: ['2022-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm', alts: ['统一6-QW-60', '风帆6-QW-60', '瓦尔塔H5'] },
+        },
+        // 奇瑞
+        '奇瑞': {
+            '艾瑞泽5': { years: ['2019-2024'], battery: '12V 55Ah', specs: '规格: 243×175×190mm', alts: ['统一6-QW-55', '风帆6-QW-55', '超威6-QW-55'] },
+            '瑞虎8': { years: ['2019-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | SUV', alts: ['统一6-QW-60', '风帆6-QW-60', '骆驼6-QW-60'] },
+            '瑞虎7': { years: ['2019-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | SUV', alts: ['统一6-QW-60', '风帆6-QW-60', '超威6-QW-60'] },
+        },
+    };
+
+    // VIN前缀解码库 (简化版)
+    const VIN_DECODER = {
+        'LFV': '大众/一汽-大众',
+        'LSV': '大众/上汽大众',
+        'WVW': '大众/进口大众',
+        'LHG': '本田/广汽本田',
+        'HMV': '本田/进口本田',
+        'LNJ': '吉利/吉利汽车',
+        'LBV': '宝马/华晨宝马',
+        'WBA': '宝马/进口宝马',
+        'LE4': '奔驰/北京奔驰',
+        'WDD': '奔驰/进口奔驰',
+        'LFMA': '奥迪/一汽-大众奥迪',
+        'WAU': '奥迪/进口奥迪',
+        'LGBH': '日产/东风日产',
+        'LGBL': '日产/郑州日产',
+        'LSV': '别克/上汽通用别克',
+        'LSY': '别克/上汽通用别克',
+        'LVS': '福特/长安福特',
+        'LJN': '日产/进口日产',
+        'LTV': '丰田/一汽丰田',
+        'LFA': '丰田/广汽丰田',
+        'JHM': '丰田/进口丰田',
+        'LSG': '雪佛兰/上汽通用雪佛兰',
+        'LSY': '凯迪拉克/上汽通用凯迪拉克',
+        'LVH': '本田/东风本田',
+        'LMG': '比亚迪/比亚迪',
+        'LGX': '比亚迪/比亚迪',
+        'LNY': '蔚来/蔚来',
+        'LXP': '小鹏/小鹏',
+        'LXi': '理想/理想',
+    };
+
+    // ============ 初始化 ============
+    document.addEventListener('DOMContentLoaded', function() {
+        initBrandSelect();
+    });
+
+    function initBrandSelect() {
+        const brandSelect = document.getElementById('brand-select');
+        const brands = Object.keys(BATTERY_DB).sort();
+        brands.forEach(brand => {
+            const opt = document.createElement('option');
+            opt.value = brand;
+            opt.textContent = brand;
+            brandSelect.appendChild(opt);
+        });
+    }
+
+    function onBrandChange() {
+        const brand = document.getElementById('brand-select').value;
+        const seriesSelect = document.getElementById('series-select');
+        const yearSelect = document.getElementById('year-select');
+        
+        seriesSelect.innerHTML = '<option value="">-- 请选择车系 --</option>';
+        yearSelect.innerHTML = '<option value="">-- 先选车系 --</option>';
+        yearSelect.disabled = true;
+        
+        if (!brand) {
+            seriesSelect.disabled = true;
+            return;
+        }
+        
+        seriesSelect.disabled = false;
+        const series = Object.keys(BATTERY_DB[brand] || {}).sort();
+        series.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s;
+            opt.textContent = s;
+            seriesSelect.appendChild(opt);
+        });
+    }
+
+    function onSeriesChange() {
+        const brand = document.getElementById('brand-select').value;
+        const series = document.getElementById('series-select').value;
+        const yearSelect = document.getElementById('year-select');
+        
+        yearSelect.innerHTML = '<option value="">-- 请选择年份 --</option>';
+        
+        if (!brand || !series) {
+            yearSelect.disabled = true;
+            return;
+        }
+        
+        yearSelect.disabled = false;
+        const data = BATTERY_DB[brand]?.[series];
+        if (data?.years) {
+            data.years.forEach(y => {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.textContent = y;
+                yearSelect.appendChild(opt);
+            });
+        }
+    }
+
+    // ============ Tab切换 ============
+    function switchTab(tab) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        event.target.classList.add('active');
+        document.getElementById('tab-' + tab).classList.add('active');
+    }
+
+    // ============ VIN查询 ============
+    function validateVin(vin) {
+        return vin.length === 17 && /^[A-HJ-NPR-Z0-9]{17}$/i.test(vin);
+    }
+
+    function decodeVin(vin) {
+        // 简化解码: 根据前缀判断
+        const prefix = vin.substring(0, 3).toUpperCase();
+        const info = VIN_DECODER[prefix] || '未知品牌';
+        
+        // 尝试匹配数据库
+        const brand = Object.keys(BATTERY_DB).find(b => info.includes(b));
+        
+        return {
+            prefix: prefix,
+            maker: info,
+            matchedBrand: brand || null,
+            year: vin.charAt(9), // 位置9是年份代码(简化)
+        };
+    }
+
+    function queryByVin() {
+        const vin = document.getElementById('vin-input').value.trim().toUpperCase();
+        const errorEl = document.getElementById('vin-error');
+        
+        if (!validateVin(vin)) {
+            errorEl.classList.add('show');
+            return;
+        }
+        errorEl.classList.remove('show');
+        
+        const decoded = decodeVin(vin);
+        
+        // 如果能匹配品牌，尝试返回该品牌最常见车型
+        if (decoded.matchedBrand) {
+            const brandData = BATTERY_DB[decoded.matchedBrand];
+            const firstSeries = Object.keys(brandData)[0];
+            const data = brandData[firstSeries];
+            
+            showResult({
+                vehicle: `${decoded.maker} | VIN: ${vin}`,
+                battery: data.battery,
+                specs: data.specs,
+                alts: data.alts || []
+            });
+        } else {
+            // 未能匹配，提示用户使用车型选择
+            showResult({
+                vehicle: `品牌: ${decoded.maker} | VIN: ${vin}`,
+                battery: '需通过VIN确认品牌后查询',
+                specs: '建议：使用「车型选择」功能直接选择您的车型',
+                alts: []
+            });
+        }
+    }
+
+    // ============ 车型查询 ============
+    function queryByVehicle() {
+        const brand = document.getElementById('brand-select').value;
+        const series = document.getElementById('series-select').value;
+        const year = document.getElementById('year-select').value;
+        
+        if (!brand || !series) {
+            alert('请选择品牌和车系');
+            return;
+        }
+        
+        const data = BATTERY_DB[brand]?.[series];
+        if (!data) {
+            alert('未找到该车型数据');
+            return;
+        }
+        
+        const vehicleText = year ? `${brand} ${series} (${year})` : `${brand} ${series}`;
+        
+        showResult({
+            vehicle: vehicleText,
+            battery: data.battery,
+            specs: data.specs,
+            alts: data.alts || []
+        });
+    }
+
+    // ============ 显示结果 ============
+    function showResult(result) {
+        const card = document.getElementById('result-card');
+        
+        document.getElementById('vehicle-info').innerHTML = `
+            <strong>📍 车型:</strong> <span class="vin-display">${result.vehicle}</span>
+        `;
+        
+        document.getElementById('battery-model').textContent = result.battery;
+        document.getElementById('battery-specs').innerHTML = result.specs.replace(/\|/g, '<br>').replace(/规格:/g, '<span>规格:</span>').replace(/极性:/g, '<span>极性:</span>').replace(/冷启动电流:/g, '<span>冷启动电流:</span>').replace(/启停/g, '<span>启停</span>');
+        
+        const altsContainer = document.getElementById('alt-models');
+        if (result.alts && result.alts.length > 0) {
+            document.getElementById('result-alts').style.display = 'block';
+            altsContainer.innerHTML = result.alts.map(alt => 
+                `<span class="alt-item">${alt}</span>`
+            ).join('');
+        } else {
+            document.getElementById('result-alts').style.display = 'none';
+        }
+        
+        card.classList.add('show');
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // ============ 扫码功能 ============
+    let stream = null;
+
+    async function startScanner() {
+        const overlay = document.getElementById('scanner-overlay');
+        const video = document.getElementById('scanner-video');
+        
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment', width: { ideal: 1280 } }
+            });
+            video.srcObject = stream;
+            overlay.classList.add('show');
+            
+            // 模拟扫码检测（实际需要OCR库，这里简化处理）
+            setTimeout(() => {
+                // 如果用户没有手动输入，提示手动输入
+                // 实际项目中可接入微信扫一扫或OCR服务
+            }, 3000);
+            
+        } catch (err) {
+            alert('无法访问相机，请检查权限设置');
+            console.error(err);
+        }
+    }
+
+    function closeScanner() {
+        const overlay = document.getElementById('scanner-overlay');
+        const video = document.getElementById('scanner-video');
+        const captured = document.getElementById('scanner-captured');
+        
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+        
+        video.srcObject = null;
+        captured.classList.remove('show');
+        overlay.classList.remove('show');
+        document.getElementById('scanned-vin').value = '';
+    }
+
+    function rescan() {
+        document.getElementById('scanner-captured').classList.remove('show');
+    }
+
+    function confirmScan() {
+        const vin = document.getElementById('scanned-vin').value.trim().toUpperCase();
+        
+        if (!validateVin(vin)) {
+            alert('车架号格式不正确，请重新扫描或手动输入');
+            return;
+        }
+        
+        document.getElementById('vin-input').value = vin;
+        closeScanner();
+        queryByVin();
+    }
+
+    // VIN输入自动大写
+    document.getElementById('vin-input').addEventListener('input', function(e) {
+        e.target.value = e.target.value.toUpperCase();
+    });
+
+    document.getElementById('scanned-vin').addEventListener('input', function(e) {
+        e.target.value = e.target.value.toUpperCase();
+    });
+    </script>
+</body>
+</html>
