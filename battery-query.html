@@ -416,22 +416,42 @@
                 </div>
             </div>
             
-            <!-- 拍照结果展示区 -->
+            <!-- 拍照结果展示区 - 方案C: 拍照→放大查看→手动输入 -->
             <div id="photo-result" style="display:none;margin-top:16px" class="card">
-                <p style="color:#f7b731;font-size:0.85rem;text-align:center;margin-bottom:8px;">
-                    👆 长按上方图片 → 选择「识别文字」
+                <p style="color:#f7b731;font-size:0.9rem;text-align:center;margin-bottom:10px;">
+                    📷 拍照成功！请查看图片中的车架号（VIN）
                 </p>
-                <img id="result-img" style="width:100%;border-radius:8px;margin:8px 0;" alt="拍照结果">
-                <p id="ocr-guide" style="color:#f7b731;font-size:0.85rem;text-align:center;margin:8px 0;"></p>
+                
+                <!-- 图片预览区 - 可放大旋转 -->
+                <div id="image-preview-container" style="position:relative;overflow:hidden;border-radius:8px;background:#0a0a15;margin:8px 0;">
+                    <img id="result-img" style="width:100%;transition:transform 0.3s;" alt="车架号图片">
+                </div>
+                
+                <!-- 图片操作按钮 -->
+                <div style="display:flex;justify-content:center;gap:10px;margin:10px 0;">
+                    <button type="button" id="btn-zoom-in" style="padding:10px 16px;background:#1e3a5f;color:#f7b731;border:1px solid #f7b731;border-radius:8px;font-size:1.2rem;cursor:pointer;">🔍+</button>
+                    <button type="button" id="btn-zoom-out" style="padding:10px 16px;background:#1e3a5f;color:#f7b731;border:1px solid #f7b731;border-radius:8px;font-size:1.2rem;cursor:pointer;">🔍-</button>
+                    <button type="button" id="btn-rotate" style="padding:10px 16px;background:#1e3a5f;color:#f7b731;border:1px solid #f7b731;border-radius:8px;font-size:1.2rem;cursor:pointer;">🔄旋转</button>
+                    <button type="button" id="btn-reset-view" style="padding:10px 16px;background:#1e3a5f;color:#f7b731;border:1px solid #f7b731;border-radius:8px;font-size:0.9rem;cursor:pointer;">重置</button>
+                </div>
+                
+                <!-- VIN输入提示 -->
+                <p style="color:#888;font-size:0.85rem;text-align:center;margin:8px 0;">
+                    💡 VIN车架号通常位于挡风玻璃下方或车门框上，共17位
+                </p>
+                
+                <!-- VIN输入框 -->
                 <div style="display:flex;gap:8px;margin-top:10px;">
-                    <input type="text" id="scanned-vin" placeholder="识别到的车架号会自动填入这里" 
-                           style="flex:1;padding:12px;border-radius:8px;border:2px solid #f7b731;background:#16213e;color:#f7b731;font-size:1rem;text-transform:uppercase;letter-spacing:1px;"
-                           oninput="this.value=this.value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g,'')">
+                    <input type="text" id="scanned-vin" placeholder="请输入17位车架号" 
+                           maxlength="17"
+                           style="flex:1;padding:14px;border-radius:8px;border:2px solid #f7b731;background:#16213e;color:#f7b731;font-size:1.1rem;text-transform:uppercase;letter-spacing:2px;text-align:center;font-weight:bold;"
+                           oninput="handleVinInput(this)">
                     <button type="button" id="btn-query-scanned" 
-                            style="padding:12px 20px;background:#f7b731;color:#1a1a2e;border:none;border-radius:8px;font-weight:bold;font-size:1rem;cursor:pointer;">
+                            style="padding:14px 24px;background:#f7b731;color:#1a1a2e;border:none;border-radius:8px;font-weight:bold;font-size:1rem;cursor:pointer;">
                         查询
                     </button>
                 </div>
+                <p id="vin-hint" style="color:#888;font-size:0.8rem;text-align:center;margin-top:6px;">0/17位</p>
             </div>
         </div>
 
@@ -1222,6 +1242,8 @@
     
     function handleNativeCapture(e) {
         console.log('[handleNativeCapture] 开始');
+        // 重置图片视图
+        resetView();
         var file = e.target.files[0];
         if (!file) return;
         e.target.value = '';
@@ -1230,22 +1252,11 @@
         reader.onload = function(ev) {
             var img = new Image();
             img.onload = function() {
-                // 直接显示原图（不做增强，保证微信OCR能识别）
+                // 方案C: 显示原图（可放大旋转查看VIN）
                 var resultDiv = document.getElementById('photo-result');
                 var resultImg = document.getElementById('result-img');
                 if (resultImg) resultImg.src = ev.target.result;
                 
-                // 微信OCR引导（显示原图，微信能识别）
-                var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-                var isAndroid = /Android/.test(navigator.userAgent);
-                var guide = isIOS 
-                    ? '👆 <b>长按上方图片</b> → 点「识别文字」→ 复制17位车架号 → 粘贴到下方输入框'
-                    : isAndroid 
-                    ? '👆 <b>长按上方图片</b> → 点「识别图片中的文字」→ 复制17位车架号 → 粘贴到下方输入框'
-                    : '👆 长按上方图片识别文字，复制车架号后粘贴到下方输入框';
-                
-                var ocrGuide = document.getElementById('ocr-guide');
-                if (ocrGuide) ocrGuide.innerHTML = guide;
                 if (resultDiv) {
                     resultDiv.style.display = 'block';
                     resultDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1292,7 +1303,7 @@
             }
             if (video) video.style.display = 'none';
             if (controls) controls.style.display = 'none';
-            if (hintEl) hintEl.innerHTML = '📸 拍照完成！<br>👆 <b>长按上方图片</b> → 点「识别文字」→ 复制17位车架号 → 粘贴到下方输入框';
+            if (hintEl) hintEl.innerHTML = '📸 拍照完成！请使用下方按钮放大查看车架号，然后手动输入VIN';
             
             // 不做图像增强，直接显示原图（让微信OCR能识别）
             console.log('[capturePhoto] 跳过图像增强，保持原图');
@@ -1363,6 +1374,9 @@
         var hintEl = document.getElementById('scanner-hint');
         if (hintEl) hintEl.innerHTML = '🎯 对准车架号，点拍照按钮';
         
+        // 重置图片视图
+        resetView();
+        
         snapCanvas = null;
         snapCtx = null;
         console.log('[closeScanner] 完成');
@@ -1389,8 +1403,78 @@
         console.log('[confirmScan] 完成');
     }
 
-    // 绑定select的onchange事件（使用属性，因为select事件比较复杂）
+    // ========== 方案C: 图片放大/旋转功能 ==========
+    var currentZoom = 1;
+    var currentRotation = 0;
+    
+    // VIN输入处理
+    function handleVinInput(input) {
+        // 转大写
+        var value = input.value.toUpperCase();
+        // 过滤I/O/Q（VIN中不使用的字母）
+        value = value.replace(/[IOQ]/g, '');
+        // 只允许字母和数字
+        value = value.replace(/[^A-HJ-NPR-Z0-9]/g, '');
+        // 限制17位
+        value = value.substring(0, 17);
+        input.value = value;
+        
+        // 更新提示
+        var hint = document.getElementById('vin-hint');
+        if (hint) {
+            hint.textContent = value.length + '/17位';
+            hint.style.color = value.length === 17 ? '#4CAF50' : '#888';
+        }
+    }
+    
+    // 放大图片
+    function zoomIn() {
+        currentZoom = Math.min(currentZoom + 0.5, 5);
+        applyImageTransform();
+    }
+    
+    // 缩小图片
+    function zoomOut() {
+        currentZoom = Math.max(currentZoom - 0.5, 0.5);
+        applyImageTransform();
+    }
+    
+    // 旋转图片
+    function rotateImage() {
+        currentRotation = (currentRotation + 90) % 360;
+        applyImageTransform();
+    }
+    
+    // 重置视图
+    function resetView() {
+        currentZoom = 1;
+        currentRotation = 0;
+        applyImageTransform();
+    }
+    
+    // 应用图片变换
+    function applyImageTransform() {
+        var img = document.getElementById('result-img');
+        if (img) {
+            img.style.transform = 'scale(' + currentZoom + ') rotate(' + currentRotation + 'deg)';
+        }
+    }
+    
+    // 绑定图片操作按钮事件
     document.addEventListener('DOMContentLoaded', function() {
+        var btnZoomIn = document.getElementById('btn-zoom-in');
+        if (btnZoomIn) btnZoomIn.addEventListener('click', zoomIn);
+        
+        var btnZoomOut = document.getElementById('btn-zoom-out');
+        if (btnZoomOut) btnZoomOut.addEventListener('click', zoomOut);
+        
+        var btnRotate = document.getElementById('btn-rotate');
+        if (btnRotate) btnRotate.addEventListener('click', rotateImage);
+        
+        var btnResetView = document.getElementById('btn-reset-view');
+        if (btnResetView) btnResetView.addEventListener('click', resetView);
+        
+        // 绑定select的onchange事件
         var brandSelect = document.getElementById('brand-select');
         if (brandSelect) {
             brandSelect.onchange = onBrandChange;
@@ -1400,6 +1484,12 @@
             seriesSelect.onchange = onSeriesChange;
         }
     });
+    
+    // 拍照时重置图片视图
+    var originalHandleNativeCapture;
+    if (typeof handleNativeCapture === 'function') {
+        originalHandleNativeCapture = handleNativeCapture;
+    }
     </script>
 </body>
 </html>
