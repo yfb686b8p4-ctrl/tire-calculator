@@ -7,6 +7,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a1a2e">
     <title>电池型号查询 - Battery Finder</title>
+    <!-- ZXing二维码/条码扫描库 (CDN，微信环境可访问) -->
+    <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -245,15 +247,18 @@
             content: '';
             position: absolute;
             top: 0;
-            left: 0;
-            right: 0;
+            left: 10%;
+            right: 10%;
             height: 3px;
-            background: #00b894;
-            animation: scanLine 2s linear infinite;
+            background: linear-gradient(90deg, transparent, #f7b731, transparent);
+            animation: scanLine 1.2s ease-in-out infinite;
+            box-shadow: 0 0 10px #f7b731, 0 0 20px rgba(247,183,49,0.4);
+            border-radius: 2px;
         }
         @keyframes scanLine {
-            0%, 100% { top: 0; }
-            50% { top: calc(100% - 3px); }
+            0% { top: 8%; }
+            50% { top: 88%; }
+            100% { top: 8%; }
         }
         .scanner-hint {
             padding: 20px;
@@ -800,37 +805,139 @@
         card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    // ============ 扫码功能 ============
+    // ============ 扫码功能 (ZXing实时扫描) ============
     let stream = null;
+    let codeReader = null;
+    let scanActive = false;
+    let lastScanTime = 0;
+    const SCAN_DEBOUNCE = 2000; // 防重复扫描2秒
 
     async function startScanner() {
         const overlay = document.getElementById('scanner-overlay');
         const video = document.getElementById('scanner-video');
+        const hintEl = document.querySelector('.scanner-hint');
         
         try {
+            // 请求摄像头（后置，高分辨率）
             stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment', width: { ideal: 1280 } }
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 1920, min: 1280 },
+                    height: { ideal: 1080, min: 720 }
+                },
+                audio: false
             });
-            video.srcObject = stream;
-            overlay.classList.add('show');
             
-            // 模拟扫码检测（实际需要OCR库，这里简化处理）
-            setTimeout(() => {
-                // 如果用户没有手动输入，提示手动输入
-                // 实际项目中可接入微信扫一扫或OCR服务
-            }, 3000);
+            video.srcObject = stream;
+            await video.play();
+            overlay.classList.add('show');
+            hintEl.innerHTML = '📷 正在启动智能识别...';
+            scanActive = true;
+            
+            // 初始化ZXing扫码器
+            initZXingScanner(video);
             
         } catch (err) {
-            alert('无法访问相机，请检查权限设置');
-            console.error(err);
+            console.error('Camera error:', err);
+            if (err.name === 'NotAllowedError') {
+                alert('请允许访问相机权限\n设置 → Safari/微信 → 相机 → 允许');
+            } else if (err.name === 'NotFoundError') {
+                alert('未检测到摄像头，请使用手动输入');
+            } else {
+                alert('无法访问相机: ' + err.message);
+            }
         }
     }
 
+    function initZXingScanner(videoElement) {
+        codeReader = new ZXing.BrowserMultiFormatReader();
+        const hintEl = document.querySelector('.scanner-hint');
+        
+        // 优先识别的格式：QR_CODE, CODE_128(车架号常用), CODE_39, DATA_MATRIX, EAN_13
+        const hints = new ZXing.Hints();
+        hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+            ZXing.BarcodeFormat.QR_CODE,
+            ZXing.BarcodeFormat.CODE_128,
+            ZXing.BarcodeFormat.CODE_39,
+            ZXing.BarcodeFormat.DATA_MATRIX,
+            ZXing.BarcodeFormat.EAN_13,
+            ZXing.BarcodeFormat.EAN_8,
+            ZXing.BarcodeFormat.ITF,
+            ZXing.BarcodeFormat.PDF_417
+        ]);
+        hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+        
+        codeReader.hints = hints;
+        
+        // 开始持续扫描
+        codeReader.decodeFromVideoDevice(undefined, videoElement, (result, error) => {
+            if (result && scanActive) {
+                const now = Date.now();
+                if (now - lastScanTime < SCAN_DEBOUNCE) return; // 防抖
+                lastScanTime = now;
+                
+                const text = result.getText().trim();
+                hintEl.innerHTML = '✅ 识别成功！正在验证...';
+                
+                // 振动反馈（如果支持）
+                if (navigator.vibrate) navigator.vibrate(100);
+                
+                // 判断是否是VIN码（17位字母数字）
+                if (/^[A-HJ-NPR-Z0-9]{17}$/i.test(text)) {
+                    handleScannedVin(text.toUpperCase());
+                } else if (text.length >= 10 && text.length <= 30) {
+                    // 可能是包含VIN的文本，尝试提取17位VIN
+                    const vinMatch = text.match(/[A-HJ-NPR-Z0-9]{17}/i);
+                    if (vinMatch) {
+                        handleScannedVin(vinMatch[0].toUpperCase());
+                    } else {
+                        // 非VIN码，显示给用户确认
+                        handleScannedText(text);
+                    }
+                } else {
+                    handleScannedText(text);
+                }
+            }
+            // 忽略NotFoundError（持续扫描时的正常错误）
+            if (error && !(error instanceof ZXing.NotFoundException)) {
+                console.error('Scan error:', error);
+            }
+        }).then(() => {
+            hintEl.innerHTML = '🎯 将二维码/VIN条码放入框内\n<span style="color:#f7b731;font-size:0.85rem">支持：二维码、条形码、VIN码</span>';
+        }).catch(err => {
+            console.error('ZXing init failed:', err);
+            hintEl.innerHTML = '⚠️ 扫描器初始化失败，请手动输入';
+        });
+    }
+
+    function handleScannedVin(vin) {
+        // 自动填充并查询
+        document.getElementById('vin-input').value = vin;
+        closeScanner();
+        queryByVin();
+    }
+
+    function handleScannedText(text) {
+        const captured = document.getElementById('scanner-captured');
+        const vinInput = document.getElementById('scanned-vin');
+        vinInput.value = text.substring(0, 30); // 截断过长内容
+        captured.classList.add('show');
+        document.querySelector('.scanner-hint').innerHTML = '📋 已识别内容，请确认或修改';
+    }
+
     function closeScanner() {
+        scanActive = false;
         const overlay = document.getElementById('scanner-overlay');
         const video = document.getElementById('scanner-video');
         const captured = document.getElementById('scanner-captured');
         
+        // 停止ZXing
+        if (codeReader) {
+            try { codeReader.reset(); } catch(e) {}
+            codeReader = null;
+        }
+        
+        // 停止摄像头
         if (stream) {
             stream.getTracks().forEach(track => track.stop());
             stream = null;
@@ -840,10 +947,13 @@
         captured.classList.remove('show');
         overlay.classList.remove('show');
         document.getElementById('scanned-vin').value = '';
+        document.querySelector('.scanner-hint').innerHTML = '将二维码/VIN条码放入框内';
     }
 
     function rescan() {
         document.getElementById('scanner-captured').classList.remove('show');
+        scanActive = true;
+        document.querySelector('.scanner-hint').innerHTML = '🎯 继续扫描...';
     }
 
     function confirmScan() {
