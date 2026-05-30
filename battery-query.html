@@ -7,10 +7,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a1a2e">
     <title>电池型号查询 - Battery Finder</title>
-    <!-- Tesseract.js OCR文字识别库 (用于车架号文字识别) -->
-    <script src="https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
-    <!-- ZXing二维码/条码扫描库 (CDN，微信环境可访问) -->
-    <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+    <!-- 轻量方案：不依赖重型OCR库，使用原生拍照+手动确认 -->
     <style>
         * {
             margin: 0;
@@ -288,6 +285,25 @@
             text-align: center;
         }
         .scanner-captured .btn-row { margin-top: 12px; }
+        .scanner-controls {
+            padding: 16px 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .btn-snap {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f7b731, #faa61a);
+            border: 4px solid #fff;
+            color: #1a1a2e;
+            font-size: 1.4rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(247,183,49,0.5);
+            transition: all 0.2s;
+        }
+        .btn-snap:active { transform: scale(0.92); box-shadow: 0 2px 10px rgba(247,183,49,0.3); }
         /* Tab switcher */
         .tabs {
             display: flex;
@@ -426,18 +442,20 @@
         <div class="scanner-video-container">
             <video id="scanner-video" autoplay playsinline></video>
             <div class="scanner-frame"></div>
+            <img id="snap-preview" style="display:none;width:100%;height:100%;object-fit:contain;border-radius:8px;" />
         </div>
-        <div class="scanner-hint">
-            📷 AI智能识别：对准车架号金属刻字或二维码
+        <div class="scanner-hint" id="scanner-hint">
+            🎯 对准车架号，点拍照按钮
+        </div>
+        <div class="scanner-controls" id="scanner-controls">
+            <button class="btn btn-snap" id="btn-snap" onclick="capturePhoto()">📸 拍照识别</button>
         </div>
         <div class="scanner-captured" id="scanner-captured">
-            <div class="input-group">
-                <label>识别到的车架号</label>
-                <input type="text" id="scanned-vin" maxlength="17" style="text-transform: uppercase;">
-            </div>
-            <div class="btn-row">
-                <button class="btn btn-secondary" onclick="rescan()">重新扫描</button>
-                <button class="btn btn-primary" onclick="confirmScan()">确认</button>
+            <label style="color:#f7b731;font-size:0.9rem;margin-bottom:8px;display:block;">🔤 请输入/修正车架号（17位）</label>
+            <input type="text" id="scanned-vin" maxlength="17" placeholder="如：LVKY9103LSX63950" style="text-transform:uppercase;font-size:1.1rem;letter-spacing:2px;text-align:center;">
+            <div class="btn-row" style="margin-top:14px;">
+                <button class="btn btn-secondary" onclick="retakePhoto()">🔄 重拍</button>
+                <button class="btn btn-primary" onclick="confirmScan()">✅ 确认查询</button>
             </div>
         </div>
     </div>
@@ -807,25 +825,25 @@
         card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    // ============ 扫码功能 (双引擎: ZXing二维码 + Tesseract OCR文字) ============
+    // ============ 扫码功能 (轻量拍照+确认模式) ============
     let stream = null;
-    let codeReader = null;
-    let ocrWorker = null;
-    let scanActive = false;
-    let lastScanTime = 0;
-    let ocrReady = false;
-    const SCAN_DEBOUNCE = 3000;
-    let ocrCanvas = null;
-    let ocrCtx = null;
-    let ocrInterval = null;
+    let snapCanvas = null;
+    let snapCtx = null;
 
     async function startScanner() {
         const overlay = document.getElementById('scanner-overlay');
         const video = document.getElementById('scanner-video');
-        const hintEl = document.querySelector('.scanner-hint');
+        const hintEl = document.getElementById('scanner-hint');
+        const controls = document.getElementById('scanner-controls');
+        
+        // 重置状态
+        document.getElementById('scanner-captured').classList.remove('show');
+        document.getElementById('snap-preview').style.display = 'none';
+        video.style.display = 'block';
+        controls.style.display = 'flex';
+        hintEl.innerHTML = '🎯 对准车架号金属刻字，保持稳定';
         
         try {
-            // 请求摄像头（后置，高分辨率，关键：更高分辨率=OCR更准）
             stream = await navigator.mediaDevices.getUserMedia({
                 video: {
                     facingMode: 'environment',
@@ -838,225 +856,107 @@
             video.srcObject = stream;
             await video.play();
             overlay.classList.add('show');
-            hintEl.innerHTML = '🔄 正在加载AI文字识别引擎...';
-            scanActive = true;
             
-            // 创建OCR用的canvas
-            ocrCanvas = document.createElement('canvas');
-            ocrCtx = ocrCanvas.getContext('2d', { willReadFrequently: true });
-            
-            // 并行启动两个引擎
-            await Promise.all([
-                initZXingScanner(video),
-                initOcrEngine(hintEl)
-            ]);
-            
-            // 启动OCR定时抓帧识别
-            startOcrCapture(video, hintEl);
+            // 初始化拍照canvas
+            snapCanvas = document.createElement('canvas');
+            snapCtx = snapCanvas.getContext('2d');
             
         } catch (err) {
             console.error('Camera error:', err);
             if (err.name === 'NotAllowedError') {
-                alert('请允许访问相机权限\n设置 → Safari/微信 → 相机 → 允许');
+                alert('请允许访问相机权限\n设置 → 微信/浏览器 → 相机 → 允许');
             } else if (err.name === 'NotFoundError') {
-                alert('未检测到摄像头，请使用手动输入');
+                alert('未检测到摄像头，请使用手动输入车架号');
             } else {
                 alert('无法访问相机: ' + err.message);
             }
         }
     }
 
-    // ========== ZXing 二维码/条码扫描 ==========
-    async function initZXingScanner(videoElement) {
-        try {
-            codeReader = new ZXing.BrowserMultiFormatReader();
-            const hints = new ZXing.Hints();
-            hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-                ZXing.BarcodeFormat.QR_CODE,
-                ZXing.BarcodeFormat.CODE_128,
-                ZXing.BarcodeFormat.CODE_39,
-                ZXing.BarcodeFormat.DATA_MATRIX,
-                ZXing.BarcodeFormat.EAN_13,
-                ZXing.BarcodeFormat.PDF_417
-            ]);
-            hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-            codeReader.hints = hints;
-            
-            codeReader.decodeFromVideoDevice(undefined, videoElement, (result, error) => {
-                if (result && scanActive) {
-                    const now = Date.now();
-                    if (now - lastScanTime < SCAN_DEBOUNCE) return;
-                    const text = result.getText().trim();
-                    if (text) handleScanResult(text);
-                }
-            });
-        } catch(e) { console.warn('ZXing init failed:', e); }
-    }
-
-    // ========== Tesseract OCR 文字识别引擎 ==========
-    async function initOcrEngine(hintEl) {
-        try {
-            hintEl.innerHTML = '🧠 正在加载AI识别模型(首次约5-10秒)...';
-            
-            ocrWorker = await Tesseract.createWorker('eng', 1, {
-                logger: m => {
-                    if (m.status === 'recognizing text') {
-                        const pct = Math.round(m.progress * 100);
-                        hintEl.innerHTML = `🔍 AI识别中... ${pct}%`;
-                    }
-                }
-            });
-            
-            // 设置白名单字符：只识别VIN码可能出现的字符
-            await ocrWorker.setParameters({
-                tessedit_char_whitelist: 'ABCDEFGHJKLMNPRSTUVWXYZ0123456789',
-                tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
-            });
-            
-            ocrReady = true;
-            hintEl.innerHTML = '🎯 将车架号对准框内\n<span style="color:#f7b731;font-size:0.85rem">支持：直接拍摄车架号金属刻字</span>';
-        } catch(e) {
-            console.error('OCR init failed:', e);
-            hintEl.innerHTML = '⚠️ OCR加载失败，仅支持二维码扫描';
-        }
-    }
-
-    // ========== OCR 定时抓帧识别 ==========
-    function startOcrCapture(videoElement, hintEl) {
-        let frameCount = 0;
-        const CAPTURE_INTERVAL = 800; // 每800ms抓一帧做OCR（平衡速度和准确率）
-        
-        ocrInterval = setInterval(async () => {
-            if (!scanActive || !ocrReady || !videoElement.videoWidth) return;
-            
-            frameCount++;
-            // 前3帧跳过（等摄像头稳定）
-            if (frameCount < 3) return;
-            
-            const now = Date.now();
-            if (now - lastScanTime < SCAN_DEBOUNCE) return;
-            
-            try {
-                // 从视频抓取中间区域（扫描框位置）
-                const vw = videoElement.videoWidth;
-                const vh = videoElement.videoHeight;
-                // 截取视频中间60%宽、40%高的区域（对应扫描框位置）
-                const cropX = vw * 0.2;
-                const cropY = vh * 0.25;
-                const cropW = vw * 0.6;
-                const cropH = vh * 0.35;
-                
-                ocrCanvas.width = cropW;
-                ocrCanvas.height = cropH;
-                ocrCtx.drawImage(videoElement, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-                
-                // 转为图片数据送入OCR
-                const imageData = ocrCanvas.toDataURL('image/jpeg', 0.9);
-                
-                hintEl.innerHTML = '🔍 正在识别车架号...';
-                
-                const result = await ocrWorker.recognize(imageData);
-                const text = result.data.text.trim().replace(/\s/g, '');
-                
-                if (text && text.length >= 10) {
-                    // 尝试提取17位VIN
-                    const vinMatch = text.match(/[A-HJ-NPR-Z0-9]{17}/i);
-                    if (vinMatch) {
-                        hintEl.innerHTML = '✅ 识别到车架号！';
-                        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-                        handleScanResult(vinMatch[0].toUpperCase());
-                    } else if (text.length >= 15 && text.length <= 20) {
-                        // 接近VIN长度，可能是识别结果不完整
-                        hintEl.innerHTML = `📋 识别: ${text} 确认?`;
-                        // 显示给用户确认
-                        handleScannedText(text.toUpperCase());
-                    }
-                }
-            } catch(e) {
-                // 忽略单帧错误
-            }
-        }, CAPTURE_INTERVAL);
-    }
-
-    // ========== 统一处理扫描结果 ==========
-    function handleScanResult(text) {
-        const now = Date.now();
-        if (now - lastScanTime < SCAN_DEBOUNCE) return;
-        lastScanTime = now;
-        
-        const upperText = text.toUpperCase();
-        
-        // 判断是否是VIN码（17位）
-        if (/^[A-HJ-NPR-Z0-9]{17}$/i.test(upperText)) {
-            handleScannedVin(upperText);
-        } else {
-            // 尝试从文本中提取VIN
-            const vinMatch = upperText.match(/[A-HJ-NPR-Z0-9]{17}/i);
-            if (vinMatch) {
-                handleScannedVin(vinMatch[0]);
-            } else {
-                handleScannedText(upperText.substring(0, 30));
-            }
-        }
-    }
-
-    function handleScannedVin(vin) {
-        document.getElementById('vin-input').value = vin;
-        closeScanner();
-        queryByVin();
-    }
-
-    function handleScannedText(text) {
+    // ========== 拍照 ==========
+    function capturePhoto() {
+        const video = document.getElementById('scanner-video');
+        const preview = document.getElementById('snap-preview');
+        const hintEl = document.getElementById('scanner-hint');
+        const controls = document.getElementById('scanner-controls');
         const captured = document.getElementById('scanner-captured');
-        const vinInput = document.getElementById('scanned-vin');
-        vinInput.value = text.substring(0, 30);
+        
+        if (!video.videoWidth) return;
+        
+        // 振动反馈
+        if (navigator.vibrate) navigator.vibrate(100);
+        
+        // 截取视频帧（全尺寸）
+        const vw = video.videoWidth;
+        const vh = video.videoHeight;
+        snapCanvas.width = vw;
+        snapCanvas.height = vh;
+        snapCtx.drawImage(video, 0, 0, vw, vh);
+        
+        // 显示拍照预览图
+        preview.src = snapCanvas.toDataURL('image/jpeg', 0.9);
+        preview.style.display = 'block';
+        video.style.display = 'none';
+        controls.style.display = 'none';
+        hintEl.innerHTML = '✅ 拍照成功！请在下方输入/修正车架号';
+        
+        // 显示输入确认区
         captured.classList.add('show');
-        const hintEl = document.querySelector('.scanner-hint');
-        if (hintEl) hintEl.innerHTML = '📋 已识别内容，请确认或修改';
+        
+        // 聚焦输入框（弹出键盘方便输入）
+        setTimeout(() => {
+            document.getElementById('scanned-vin').focus();
+        }, 300);
     }
 
+    // ========== 重拍 ==========
+    function retakePhoto() {
+        const video = document.getElementById('scanner-video');
+        const preview = document.getElementById('snap-preview');
+        const hintEl = document.getElementById('scanner-hint');
+        const controls = document.getElementById('scanner-controls');
+        const captured = document.getElementById('scanner-captured');
+        
+        preview.style.display = 'none';
+        preview.src = '';
+        video.style.display = 'block';
+        controls.style.display = 'flex';
+        captured.classList.remove('show');
+        document.getElementById('scanned-vin').value = '';
+        hintEl.innerHTML = '🎯 对准车架号，保持稳定，重新拍照';
+    }
+
+    // ========== 关闭扫描 ==========
     function closeScanner() {
-        scanActive = false;
         const overlay = document.getElementById('scanner-overlay');
         const video = document.getElementById('scanner-video');
+        const preview = document.getElementById('snap-preview');
         const captured = document.getElementById('scanner-captured');
+        const controls = document.getElementById('scanner-controls');
         
-        // 停止OCR定时器
-        if (ocrInterval) { clearInterval(ocrInterval); ocrInterval = null; }
-        
-        // 停止ZXing
-        if (codeReader) { try { codeReader.reset(); } catch(e) {} codeReader = null; }
-        
-        // 终止OCR Worker
-        if (ocrWorker) { ocrWorker.terminate(); ocrWorker = null; ocrReady = false; }
-        
-        // 停止摄像头
-        if (stream) { stream.getTracks().forEach(track => track.stop()); stream = null; }
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
         
         video.srcObject = null;
+        preview.style.display = 'none';
+        preview.src = '';
+        video.style.display = 'block';
+        controls.style.display = 'flex';
         captured.classList.remove('show');
         overlay.classList.remove('show');
         document.getElementById('scanned-vin').value = '';
-        const hintEl = document.querySelector('.scanner-hint');
-        if (hintEl) hintEl.innerHTML = '将车架号对准框内，保持稳定';
-        ocrCanvas = null;
-        ocrCtx = null;
+        document.getElementById('scanner-hint').innerHTML = '🎯 对准车架号，点拍照按钮';
+        snapCanvas = null;
+        snapCtx = null;
     }
 
-    function rescan() {
-        document.getElementById('scanner-captured').classList.remove('show');
-        scanActive = true;
-        const hintEl = document.querySelector('.scanner-hint');
-        if (hintEl) hintEl.innerHTML = '🎯 继续扫描...';
-        // 重启OCR抓帧
-        const video = document.getElementById('scanner-video');
-        if (video && ocrReady) startOcrCapture(video, hintEl);
-    }
-
+    // ========== 确认查询 ==========
     function confirmScan() {
         const vin = document.getElementById('scanned-vin').value.trim().toUpperCase();
         if (!validateVin(vin)) {
-            alert('车架号格式不正确，请重新扫描或手动输入');
+            alert('⚠️ 车架号格式不正确\n\n要求：17位字母数字组合\n示例：LVKY9103LSX63950\n\n请检查后重新输入');
             return;
         }
         document.getElementById('vin-input').value = vin;
