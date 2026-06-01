@@ -424,7 +424,7 @@
                     <input type="text" id="scanned-vin" placeholder="识别到的车架号会自动填入这里" 
                            style="flex:1;padding:12px;border-radius:8px;border:2px solid #f7b731;background:#16213e;color:#f7b731;font-size:1rem;text-transform:uppercase;letter-spacing:1px;"
                            oninput="this.value=this.value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g,'')">
-                    <button type="button" id="btn-query-scanned" 
+                    <button type="button" id="btn-query-scanned" onclick="queryByVinWithScanned()"
                             style="padding:12px 20px;background:#f7b731;color:#1a1a2e;border:none;border-radius:8px;font-weight:bold;font-size:1rem;cursor:pointer;">
                         查询
                     </button>
@@ -831,6 +831,7 @@
         'LVS': '福特/长安福特',
         'LJN': '日产/进口日产',
         'JTH': '丰田/一汽丰田',
+        'JTN': '丰田/广汽丰田/进口丰田',
         '2T1': '丰田/一汽丰田',
         'LTV': '丰田/一汽丰田',
         'LFA': '丰田/广汽丰田',
