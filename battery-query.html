@@ -367,8 +367,8 @@
 
         <!-- Tabs -->
         <div class="tabs">
-            <button type="button" class="tab active" id="tab-scan-btn">📸 拍照识别</button>
-            <button type="button" class="tab" id="tab-select-btn">🚗 车型选择</button>
+            <a href="javascript:void(0)" id="tab-scan-btn" onclick="switchTab('scan')" style="flex:1;padding:12px;text-align:center;cursor:pointer;text-decoration:none;display:block;">📸 拍照识别
+            <a href="javascript:void(0)" id="tab-select-btn" onclick="switchTab('select')" style="flex:1;padding:12px;text-align:center;cursor:pointer;text-decoration:none;display:block;">🚗 车型选择</a>
         </div>
 
         <!-- Tab 1: VIN输入 + 拍照 -->
@@ -389,9 +389,11 @@
                 <div class="error-msg" id="vin-error">车架号格式不正确，请输入17位VIN码（不含I/O/Q）</div>
                 
                 <!-- 查询按钮 -->
-                <button type="button" class="btn btn-primary" id="btn-query-vin" style="width:100%;padding:16px;font-size:1.15rem;margin-top:10px;">
+                <a href="javascript:void(0)" id="btn-query-vin" 
+                   style="display:block;width:100%;padding:16px;font-size:1.15rem;margin-top:10px;text-align:center;text-decoration:none;box-sizing:border-box;cursor:pointer;"
+                   onclick="try{console.log('[btn-click]'); queryByVin();}catch(e){alert('错误:'+e.message);}">
                     🔍 查询电池型号
-                </button>
+                </a>
 
                 
                 <!-- 分隔线 -->
@@ -402,17 +404,17 @@
                     
                     <!-- 原生相机 -->
                     <input type="file" id="native-camera" accept="image/*" capture="environment" style="display:none">
-                    <button type="button" id="btn-native-camera" 
+                    <a href="javascript:void(0)" id="btn-native-camera" 
                             style="width:100%;padding:14px;font-size:1rem;background:#1e3a5f;color:#f7b731;border:2px solid #f7b731;border-radius:12px;font-weight:bold;cursor:pointer;margin-bottom:8px;">
                         📸 拍照识别车架号
-                    </button>
+                    </a>
                     
                     <!-- 相册选取 -->
                     <input type="file" id="album-pick" accept="image/*" style="display:none">
-                    <button type="button" id="btn-album-pick" 
+                    <a href="javascript:void(0)" id="btn-album-pick" 
                             style="width:100%;padding:12px;font-size:0.95rem;background:transparent;color:#888;border:1px solid #555;border-radius:10px;cursor:pointer;">
                         🖼️ 从相册选取照片
-                    </button>
+                    </a>
                 </div>
             </div>
             
@@ -456,7 +458,7 @@
                     </select>
                 </div>
                 <div class="btn-row">
-                    <button type="button" class="btn btn-primary" id="btn-query-vehicle" style="flex:2">查询电池型号</button>
+                    <a href="javascript:void(0)" id="btn-query-vehicle" onclick="queryByVehicle()" style="display:block;flex:2;padding:14px;text-align:center;cursor:pointer;text-decoration:none;" style="flex:2">查询电池型号</a>
                 </div>
             </div>
         </div>
@@ -480,7 +482,7 @@
     <div class="scanner-overlay" id="scanner-overlay">
         <div class="scanner-header">
             <h3>📷 扫描车架号</h3>
-            <button type="button" class="scanner-close" id="btn-close-scanner">关闭</button>
+            <a href="javascript:void(0)" id="btn-close-scanner" onclick="closeScanner()" style="padding:8px 16px;cursor:pointer;">关闭</a>
         </div>
         <div class="scanner-video-container">
             <video id="scanner-video" autoplay playsinline></video>
@@ -491,14 +493,14 @@
             🎯 对准车架号，点拍照按钮
         </div>
         <div class="scanner-controls" id="scanner-controls">
-            <button type="button" class="btn-snap" id="btn-snap">📸 拍照识别</button>
+            <a href="javascript:void(0)" id="btn-snap" onclick="snapPhoto()" style="display:block;width:100%;padding:16px;cursor:pointer;text-align:center;">📸 拍照识别</a>
         </div>
         <div class="scanner-captured" id="scanner-captured">
             <div style="color:#f7b731;font-size:0.85rem;margin-bottom:8px;text-align:center;">🔤 输入车架号（大陆17位/港澳可少于17位）</div>
             <input type="text" id="scanned-vin-overlay" maxlength="17" placeholder="如：LVKY9103LSX63950" style="text-transform:uppercase;font-size:1.1rem;letter-spacing:2px;text-align:center;">
             <div class="btn-row" style="margin-top:14px;">
-                <button type="button" class="btn btn-secondary" id="btn-retake">🔄 重拍</button>
-                <button type="button" class="btn btn-primary" id="btn-confirm-scan">✅ 确认查询</button>
+                <a href="javascript:void(0)" id="btn-retake" onclick="retakePhoto()" style="display:block;padding:12px;text-align:center;cursor:pointer;">🔄 重拍</a>
+                <a href="javascript:void(0)" id="btn-confirm-scan" onclick="confirmScan()" style="display:block;padding:12px;text-align:center;cursor:pointer;">✅ 确认查询</a>
             </div>
         </div>
     </div>
