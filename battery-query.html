@@ -424,10 +424,11 @@
                     <input type="text" id="scanned-vin" placeholder="识别到的车架号会自动填入这里" 
                            style="flex:1;padding:12px;border-radius:8px;border:2px solid #f7b731;background:#16213e;color:#f7b731;font-size:1rem;text-transform:uppercase;letter-spacing:1px;"
                            oninput="this.value=this.value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g,'')">
-                    <button type="button" id="btn-query-scanned" onclick="queryByVinWithScanned()"
-                            style="padding:12px 20px;background:#f7b731;color:#1a1a2e;border:none;border-radius:8px;font-weight:bold;font-size:1rem;cursor:pointer;">
+                    <a href="javascript:void(0)" id="btn-query-scanned" 
+                       style="padding:12px 20px;background:#f7b731;color:#1a1a2e;border:none;border-radius:8px;font-weight:bold;font-size:1rem;cursor:pointer;display:inline-block;text-decoration:none;text-align:center;min-width:60px;"
+                       onclick="try{console.log('btn clicked');var v=document.getElementById('scanned-vin').value;if(!v){alert('请输入车架号');return;}document.getElementById('vin-input').value=v;queryByVin();}catch(e){alert('错误:'+e.message);}">
                         查询
-                    </button>
+                    </a>
                 </div>
             </div>
         </div>
