@@ -1593,6 +1593,13 @@
     function queryByVin() {
         console.log('[queryByVin] 开始');
         try {
+            // ✅ 先清空之前的结果，避免显示旧数据
+            var resultCard = document.getElementById('result-card');
+            if (resultCard) {
+                resultCard.innerHTML = '';
+                resultCard.style.display = 'none';
+            }
+            
             var vinEl = document.getElementById('vin-input');
             if (!vinEl) {
                 alert('错误：找不到VIN输入框');
