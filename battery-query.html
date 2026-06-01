@@ -1154,6 +1154,35 @@
         };
     }
 
+    // ============ VIN_PREFIX_BATTERY 数据集（前6位精确匹配）================
+    var VIN_PREFIX_BATTERY = {
+        // 保时捷 (Porsche)
+        'WP1AA2': { brand: '保时捷', model: 'Macan', battery: '12V 70Ah AGM', specs: '278×175×190mm | 右正 | 启停:是' },
+        'WP1AB2': { brand: '保时捷', model: 'Cayenne', battery: '12V 90Ah AGM', specs: '315×175×190mm | 右正 | 启停:是' },
+        'WP1ZZZ': { brand: '保时捷', model: '911', battery: '12V 70Ah AGM', specs: '278×175×190mm | 右正 | 启停:是' },
+        
+        // 宝马 (BMW)
+        'WBAHZ8': { brand: '宝马', model: '3系', battery: '12V 80Ah AGM', specs: '315×175×190mm | 右正 | 启停:是' },
+        'WBAJB8': { brand: '宝马', model: '5系', battery: '12V 90Ah AGM', specs: '315×175×190mm | 右正 | 启停:是' },
+        'WBAJA9': { brand: '宝马', model: 'X5', battery: '12V 90Ah AGM', specs: '315×175×190mm | 右正 | 启停:是' },
+        
+        // 奔驰 (Mercedes-Benz)
+        'LE4202': { brand: '奔驰', model: 'C级', battery: '12V 80Ah AGM', specs: '315×175×190mm | 右正 | 启停:是' },
+        'LE4222': { brand: '奔驰', model: 'E级', battery: '12V 90Ah AGM', specs: '315×175×190mm | 右正 | 启停:是' },
+        'WDD212': { brand: '奔驰', model: 'E级', battery: '12V 90Ah AGM', specs: '315×175×190mm | 右正 | 启停:是' },
+        
+        // 奥迪 (Audi)
+        'WAUZZZ': { brand: '奥迪', model: 'A4L', battery: '12V 72Ah AGM', specs: '315×175×190mm | 右正 | 启停:是' },
+        'WAU8GD': { brand: '奥迪', model: 'A6L', battery: '12V 80Ah AGM', specs: '315×175×190mm | 右正 | 启停:是' },
+        
+        // 大众 (Volkswagen)
+        'LSVAX2': { brand: '大众', model: '朗逸', battery: '12V 60Ah', specs: '243×175×190mm | 右正 | 启停:否' },
+        'LSVBP2': { brand: '大众', model: '帕萨特', battery: '12V 72Ah AGM', specs: '315×175×190mm | 右正 | 启停:是' },
+        'LFV2A2': { brand: '大众', model: '迈腾', battery: '12V 72Ah AGM', specs: '315×175×190mm | 右正 | 启停:是' },
+        
+        // 更多品牌陆续补充...
+    };
+
     // ============ VIN查询（主） ============
     function queryByVin() {
         console.log('[queryByVin] 开始');
@@ -1181,49 +1210,120 @@
             var decoded = decodeVin(vin);
             console.log('[queryByVin] 解码结果:', decoded);
             
-            if (decoded.matchedBrand && BATTERY_DB[decoded.matchedBrand]) {
-                var brandData = BATTERY_DB[decoded.matchedBrand];
-                var firstSeries = Object.keys(brandData)[0];
-                var data = brandData[firstSeries];
-                
+            // ✅ 新逻辑：前6位精确匹配 → 前5位 → 前3位 → 展示所有车型让用户选择
+            var matched = false;
+            
+            // 第1优先：前6位精确匹配
+            if (vin.length >= 6 && VIN_PREFIX_BATTERY[vin.substring(0, 6)]) {
+                var prefixData = VIN_PREFIX_BATTERY[vin.substring(0, 6)];
                 showResult({
-                    vehicle: decoded.maker + ' | VIN: ' + vin,
-                    battery: data.battery,
-                    specs: data.specs,
-                    alts: data.alts || []
+                    vehicle: prefixData.brand + ' ' + prefixData.model + ' | VIN: ' + vin,
+                    battery: prefixData.battery,
+                    specs: prefixData.specs,
+                    alts: []
                 });
-            } else {
-                if (decoded.matchedBrand && BATTERY_DB[decoded.matchedBrand]) {
-                    var brandData = BATTERY_DB[decoded.matchedBrand];
-                    var seriesList = Object.keys(brandData);
-                    var firstSeries = seriesList[0];
-                    var data = brandData[firstSeries];
-                    var altList = [];
-                    seriesList.forEach(function(s) {
-                        if (brandData[s] && brandData[s].battery) {
-                            altList.push(s + ': ' + brandData[s].battery);
-                        }
-                    });
-                    showResult({
-                        vehicle: decoded.maker + ' | VIN: ' + vin + ' (匹配品牌: ' + decoded.matchedBrand + ')',
-                        battery: data.battery + ' [' + firstSeries + ']',
-                        specs: data.specs + '\n📋 该品牌下共有 ' + seriesList.length + ' 款车型，如不符请用「车型选择」精确匹配',
-                        alts: altList
-                    });
-                } else {
-                    showResult({
-                        vehicle: '品牌: ' + decoded.maker + ' | VIN: ' + vin,
-                        battery: '暂无此品牌电池数据',
-                        specs: '建议：使用「车型选择」功能查询',
-                        alts: []
-                    });
+                matched = true;
+                console.log('[queryByVin] 前6位精确匹配成功:', vin.substring(0, 6));
+            }
+            
+            // 第2优先：前5位匹配
+            if (!matched && vin.length >= 5) {
+                for (var key in VIN_PREFIX_BATTERY) {
+                    if (key.substring(0, 5) === vin.substring(0, 5)) {
+                        var prefixData = VIN_PREFIX_BATTERY[key];
+                        showResult({
+                            vehicle: prefixData.brand + ' ' + prefixData.model + ' (前5位匹配) | VIN: ' + vin,
+                            battery: prefixData.battery,
+                            specs: prefixData.specs + '\n⚠️ 前5位匹配，请核对车型是否正确',
+                            alts: []
+                        });
+                        matched = true;
+                        console.log('[queryByVin] 前5位匹配成功:', vin.substring(0, 5));
+                        break;
+                    }
                 }
+            }
+            
+            // 第3优先：前3位品牌匹配 → 展示所有车型让用户选择
+            if (!matched && decoded.matchedBrand && BATTERY_DB[decoded.matchedBrand]) {
+                var brandData = BATTERY_DB[decoded.matchedBrand];
+                var seriesList = Object.keys(brandData);
+                
+                // ✅ 不再返回第一个，而是展示所有车型让用户选择
+                showModelSelection(decoded.matchedBrand, seriesList, vin);
+                matched = true;
+                console.log('[queryByVin] 仅匹配到品牌，展示车型选择列表');
+            }
+            
+            // 未匹配到任何数据
+            if (!matched) {
+                showResult({
+                    vehicle: '未识别品牌 | VIN: ' + vin,
+                    battery: '暂无此VIN的电池数据',
+                    specs: '建议：使用「车型选择」功能查询',
+                    alts: []
+                });
             }
         } catch(e) {
             alert('查询出错: ' + e.message);
             console.error('[queryByVin]', e);
         }
         console.log('[queryByVin] 结束');
+    }
+    
+    // ============ 展示车型选择列表 ============
+    function showModelSelection(brand, seriesList, vin) {
+        console.log('[showModelSelection] 品牌:', brand, '车型数:', seriesList.length);
+        
+        var resultSection = document.getElementById('result-section');
+        if (!resultSection) {
+            alert('错误：找不到结果区域');
+            return;
+        }
+        
+        var html = '<div class="result-card show" style="border-color: #f7b731;">'
+            + '<div class="result-title">⚠️ 请选择具体车型</div>'
+            + '<div class="vehicle-info">'
+            + '<div>VIN: <span class="vin-display">' + vin + '</span></div>'
+            + '<div>匹配品牌: <strong>' + brand + '</strong></div>'
+            + '<div style="margin-top: 12px; color: #f7b731; font-size: 0.9rem;">请选择您的具体车型：</div>'
+            + '</div>'
+            + '<div style="max-height: 400px; overflow-y: auto; margin-top: 12px;">';
+        
+        seriesList.forEach(function(series) {
+            var data = BATTERY_DB[brand][series];
+            if (data && data.battery) {
+                html += '<div class="result-battery" style="cursor: pointer;" onclick="selectModel(\' + brand + '\', \'' + series + '\', \'' + vin + '\')">'
+                    + '<div class="model">' + series + '</div>'
+                    + '<div class="specs">电池: <span>' + data.battery + '</span></div>'
+                    + '<div class="specs">规格: <span>' + data.specs + '</span></div>'
+                    + '</div>';
+            }
+        });
+        
+        html += '</div></div>';
+        
+        resultSection.innerHTML = html;
+        resultSection.style.display = 'block';
+        resultSection.scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    // ============ 用户选择车型后 ============
+    function selectModel(brand, series, vin) {
+        console.log('[selectModel] 品牌:', brand, '车型:', series);
+        
+        var data = BATTERY_DB[brand][series];
+        if (!data) {
+            alert('错误：找不到车型数据');
+            return;
+        }
+        
+        showResult({
+            vehicle: brand + ' ' + series + ' | VIN: ' + vin,
+            battery: data.battery,
+            specs: data.specs,
+            alts: data.alts || []
+        });
     }
 
     // ============ 使用拍照后的VIN查询 ============
