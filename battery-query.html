@@ -669,8 +669,8 @@
         },
         // 长城
         '长城': {
-            '哈佛H6': { years: ['2019-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | SUV', alts: ['统一6-QW-60', '风帆6-QW-60', '骆驼6-QW-60'] },
-            '哈佛大狗': { years: ['2020-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | SUV', alts: ['统一6-QW-60', '风帆6-QW-60', '超威6-QW-60'] },
+            '哈弗H6': { years: ['2019-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | SUV', alts: ['统一6-QW-60', '风帆6-QW-60', '骆驼6-QW-60'] },
+            '哈弗大狗': { years: ['2020-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | SUV', alts: ['统一6-QW-60', '风帆6-QW-60', '超威6-QW-60'] },
             '坦克300': { years: ['2021-2024'], battery: '12V 80Ah', specs: '规格: 315×175×190mm | 越野', alts: ['统一6-QW-80', '风帆6-QW-80', '瓦尔塔H8'] },
             '欧拉好猫': { years: ['2021-2024'], battery: '12V 45Ah', specs: '规格: 238×129×203mm | 纯电', alts: ['统一6-QW-45', '风帆6-QW-45', '超威6-QW-45'] },
             '炮': { years: ['2020-2024'], battery: '12V 80Ah', specs: '规格: 315×175×190mm | 皮卡', alts: ['统一6-QW-80', '风帆6-QW-80', '瓦尔塔H8'] },
@@ -1107,7 +1107,7 @@
         }
         
         yearSelect.disabled = false;
-        var data = BATTERY_DB[brand]?.[series];
+        var data = (BATTERY_DB[brand] || {})[series];
         if (data && data.years) {
             data.years.forEach(function(y) {
                 var opt = document.createElement('option');
@@ -1122,7 +1122,12 @@
     // ============ Tab切换 ============
     function switchTab(tab) {
         console.log('[switchTab] tab: ' + tab);
-        document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+        // 清除所有tab按钮active状态
+        var scanBtn = document.getElementById('tab-scan-btn');
+        var selectBtn = document.getElementById('tab-select-btn');
+        if (scanBtn) scanBtn.classList.remove('active');
+        if (selectBtn) selectBtn.classList.remove('active');
+        // 清除所有tab-content
         document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
         
         var targetTab = document.getElementById('tab-' + tab);
@@ -1132,11 +1137,9 @@
         
         // 更新tab按钮状态
         if (tab === 'scan') {
-            var btn = document.getElementById('tab-scan-btn');
-            if (btn) btn.classList.add('active');
+            if (scanBtn) scanBtn.classList.add('active');
         } else if (tab === 'select') {
-            var btn = document.getElementById('tab-select-btn');
-            if (btn) btn.classList.add('active');
+            if (selectBtn) selectBtn.classList.add('active');
         }
     }
 
@@ -1783,7 +1786,7 @@
                 return;
             }
             
-            var data = BATTERY_DB[brand]?.[series];
+            var data = (BATTERY_DB[brand] || {})[series];
             if (!data) {
                 alert('未找到该车型数据');
                 return;
@@ -1814,40 +1817,31 @@
                 return;
             }
             
-            var vehicleInfo = document.getElementById('vehicle-info');
-            if (vehicleInfo) {
-                vehicleInfo.innerHTML = '<strong>📍 车型:</strong> <span class="vin-display">' + result.vehicle + '</span>';
-            }
-            
-            var batteryModel = document.getElementById('battery-model');
-            if (batteryModel) {
-                batteryModel.textContent = result.battery;
-            }
-            
-            var batterySpecs = document.getElementById('battery-specs');
-            if (batterySpecs && result.specs) {
-                var specsHtml = result.specs
+            // 用innerHTML重写整个卡片，避免showModelSelection覆盖后子元素丢失
+            var specsHtml = '';
+            if (result.specs) {
+                specsHtml = result.specs
                     .replace(/\|/g, '<br>')
                     .replace(/规格:/g, '<span>规格:</span>')
                     .replace(/极性:/g, '<span>极性:</span>')
                     .replace(/冷启动电流:/g, '<span>冷启动电流:</span>')
                     .replace(/启停/g, '<span>启停</span>');
-                batterySpecs.innerHTML = specsHtml;
             }
             
-            var altsDiv = document.getElementById('alt-models');
-            var altsWrapper = document.getElementById('result-alts');
-            if (altsDiv && altsWrapper) {
-                if (result.alts && result.alts.length > 0) {
-                    altsWrapper.style.display = 'block';
-                    altsDiv.innerHTML = result.alts.map(function(alt) {
+            var altsHtml = '';
+            if (result.alts && result.alts.length > 0) {
+                altsHtml = '<div class="result-alts" style="display:block;">'
+                    + '<div class="alts-title">💡 替代型号</div>'
+                    + '<div>' + result.alts.map(function(alt) {
                         return '<span class="alt-item">' + alt + '</span>';
-                    }).join('');
-                } else {
-                    altsWrapper.style.display = 'none';
-                    altsDiv.innerHTML = '';
-                }
+                    }).join('') + '</div></div>';
             }
+            
+            card.innerHTML = '<div class="result-title">✅ 查询结果</div>'
+                + '<div class="vehicle-info" id="vehicle-info"><strong>📍 车型:</strong> <span class="vin-display">' + result.vehicle + '</span></div>'
+                + '<div class="result-battery"><div class="model" id="battery-model">' + result.battery + '</div>'
+                + '<div class="specs" id="battery-specs">' + specsHtml + '</div></div>'
+                + altsHtml;
             
             card.classList.add('show');
             card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -2040,6 +2034,34 @@
         console.log('[retakePhoto] 完成');
     }
 
+    // ============ 打开扫描器 ============
+    function openScanner() {
+        console.log('[openScanner] 开始');
+        var overlay = document.getElementById('scanner-overlay');
+        var video = document.getElementById('scanner-video');
+        var hintEl = document.getElementById('scanner-hint');
+        
+        if (!overlay) return;
+        overlay.classList.add('show');
+        
+        // 启动摄像头
+        if (video && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                .then(function(s) {
+                    stream = s;
+                    video.srcObject = s;
+                    video.play().catch(function(){});
+                    if (hintEl) hintEl.innerHTML = '🎯 对准车架号，点拍照按钮';
+                })
+                .catch(function(err) {
+                    console.error('[openScanner] 摄像头启动失败:', err);
+                    if (hintEl) hintEl.innerHTML = '⚠️ 摄像头启动失败，请手动输入车架号';
+                });
+        } else {
+            if (hintEl) hintEl.innerHTML = '⚠️ 浏览器不支持摄像头，请手动输入车架号';
+        }
+    }
+
     function closeScanner() {
         console.log('[closeScanner] 开始');
         var overlay = document.getElementById('scanner-overlay');
@@ -2085,7 +2107,7 @@
         }
         
         if (!validateVin(vin)) {
-            alert('⚠️ 车架号格式不正确\n\n要求：17位字母数字组合\n示例：LVKY9103LSX63950\n\n请检查后重新输入');
+            alert('⚠️ 车架号格式不正确\n\n要求：大陆17位/港澳12-16位字母数字组合\n示例：LVKY9103LSX63950\n\n请检查后重新输入');
             return;
         }
         
