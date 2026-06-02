@@ -367,7 +367,7 @@
 
         <!-- Tabs -->
         <div class="tabs">
-            <a href="javascript:void(0)" id="tab-scan-btn" onclick="switchTab('scan')" style="flex:1;padding:12px;text-align:center;cursor:pointer;text-decoration:none;display:block;">📸 拍照识别
+            <a href="javascript:void(0)" id="tab-scan-btn" onclick="switchTab('scan')" style="flex:1;padding:12px;text-align:center;cursor:pointer;text-decoration:none;display:block;">📸 拍照识别</a>
             <a href="javascript:void(0)" id="tab-select-btn" onclick="switchTab('select')" style="flex:1;padding:12px;text-align:center;cursor:pointer;text-decoration:none;display:block;">🚗 车型选择</a>
         </div>
 
@@ -458,7 +458,7 @@
                     </select>
                 </div>
                 <div class="btn-row">
-                    <a href="javascript:void(0)" id="btn-query-vehicle" onclick="queryByVehicle()" style="display:block;flex:2;padding:14px;text-align:center;cursor:pointer;text-decoration:none;" style="flex:2">查询电池型号</a>
+                    <a href="javascript:void(0)" id="btn-query-vehicle" onclick="queryByVehicle()" style="display:block;flex:2;padding:14px;text-align:center;cursor:pointer;text-decoration:none;">查询电池型号</a>
                 </div>
             </div>
         </div>
@@ -493,7 +493,7 @@
             🎯 对准车架号，点拍照按钮
         </div>
         <div class="scanner-controls" id="scanner-controls">
-            <a href="javascript:void(0)" id="btn-snap" onclick="snapPhoto()" style="display:block;width:100%;padding:16px;cursor:pointer;text-align:center;">📸 拍照识别</a>
+            <a href="javascript:void(0)" id="btn-snap" onclick="capturePhoto()" style="display:block;width:100%;padding:16px;cursor:pointer;text-align:center;">📸 拍照识别</a>
         </div>
         <div class="scanner-captured" id="scanner-captured">
             <div style="color:#f7b731;font-size:0.85rem;margin-bottom:8px;text-align:center;">🔤 输入车架号（大陆17位/港澳可少于17位）</div>
@@ -807,6 +807,7 @@
         'LVG': '广汽传祺/广汽埃安',
         'LVR': '长安马自达/马自达',
         'WP0': '保时捷/保时捷',
+        'WP1': '保时捷/保时捷',
         'LRW': '特斯拉/特斯拉上海',
         'ZNG': '特斯拉/特斯拉米拉菲奥工厂',
         'LFM': '一汽丰田/一汽丰田',
@@ -831,7 +832,7 @@
         'LGBH': '日产/东风日产',
         'LGBL': '日产/郑州日产',
         'LSY': '别克/上汽通用别克',
-        'LVS': '福特/长安福特',
+        'LVS': '一汽丰田/丰田',
         'LJN': '日产/进口日产',
         'JTH': '丰田/一汽丰田',
         'JTN': '丰田/广汽丰田/进口丰田',
@@ -927,15 +928,9 @@
             });
         }
         
-        // 查询按钮（VIN）
-        var btnQueryVin = document.getElementById('btn-query-vin');
-        if (btnQueryVin) {
-            btnQueryVin.addEventListener('click', function(e) {
-                console.log('[btn-query-vin] clicked');
-                e.preventDefault();
-                queryByVin();
-            });
-        }
+        // 查询按钮（VIN）- 已通过onclick绑定，不再重复addEventListener
+        // var btnQueryVin = document.getElementById('btn-query-vin');
+        // onclick已处理queryByVin()调用
         
         // 原生相机按钮
         var btnNativeCamera = document.getElementById('btn-native-camera');
