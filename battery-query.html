@@ -391,7 +391,6 @@
                 <!-- 查询按钮 -->
                 <a href="javascript:void(0)" id="btn-query-vin" 
                    style="display:block;width:100%;padding:16px;font-size:1.15rem;margin-top:10px;text-align:center;text-decoration:none;box-sizing:border-box;cursor:pointer;"
-                   onclick="try{console.log('[btn-click]'); queryByVin();}catch(e){alert('错误:'+e.message);}">
                     🔍 查询电池型号
                 </a>
 
@@ -428,7 +427,6 @@
                            oninput="this.value=this.value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g,'')">
                     <a href="javascript:void(0)" id="btn-query-scanned" 
                        style="padding:12px 20px;background:#f7b731;color:#1a1a2e;border:none;border-radius:8px;font-weight:bold;font-size:1rem;cursor:pointer;display:inline-block;text-decoration:none;text-align:center;min-width:60px;"
-                       onclick="try{console.log('btn clicked');var v=document.getElementById('scanned-vin').value;if(!v){alert('请输入车架号');return;}document.getElementById('vin-input').value=v;queryByVin();}catch(e){alert('错误:'+e.message);}">
                         查询
                     </a>
                 </div>
@@ -936,7 +934,6 @@
 
     // ============ 初始化 ============
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('[DOMContentLoaded] 开始初始化');
         
         // 绑定所有按钮事件（使用addEventListener，避免onclick属性错误）
         bindAllEvents();
@@ -957,26 +954,22 @@
             seriesSelect.onchange = onSeriesChange;
         }
         
-        console.log('[DOMContentLoaded] 初始化完成');
     });
 
     // ============ 绑定所有事件 ============
     function bindAllEvents() {
-        console.log('[bindAllEvents] 开始绑定事件');
         
         // Tab切换按钮
         var tabScanBtn = document.getElementById('tab-scan-btn');
         var tabSelectBtn = document.getElementById('tab-select-btn');
         if (tabScanBtn) {
             tabScanBtn.addEventListener('click', function(e) {
-                console.log('[tab-scan-btn] clicked');
-                switchTab('scan');
+                        switchTab('scan');
             });
         }
         if (tabSelectBtn) {
             tabSelectBtn.addEventListener('click', function(e) {
-                console.log('[tab-select-btn] clicked');
-                switchTab('select');
+                        switchTab('select');
             });
         }
         
@@ -988,8 +981,7 @@
         var btnNativeCamera = document.getElementById('btn-native-camera');
         if (btnNativeCamera) {
             btnNativeCamera.addEventListener('click', function(e) {
-                console.log('[btn-native-camera] clicked');
-                e.preventDefault();
+                        e.preventDefault();
                 var input = document.getElementById('native-camera');
                 if (input) input.click();
             });
@@ -999,8 +991,7 @@
         var btnAlbumPick = document.getElementById('btn-album-pick');
         if (btnAlbumPick) {
             btnAlbumPick.addEventListener('click', function(e) {
-                console.log('[btn-album-pick] clicked');
-                e.preventDefault();
+                        e.preventDefault();
                 var input = document.getElementById('album-pick');
                 if (input) input.click();
             });
@@ -1010,8 +1001,7 @@
         var btnQueryScanned = document.getElementById('btn-query-scanned');
         if (btnQueryScanned) {
             btnQueryScanned.addEventListener('click', function(e) {
-                console.log('[btn-query-scanned] clicked');
-                e.preventDefault();
+                        e.preventDefault();
                 queryByVinWithScanned();
             });
         }
@@ -1020,8 +1010,7 @@
         var btnQueryVehicle = document.getElementById('btn-query-vehicle');
         if (btnQueryVehicle) {
             btnQueryVehicle.addEventListener('click', function(e) {
-                console.log('[btn-query-vehicle] clicked');
-                e.preventDefault();
+                        e.preventDefault();
                 queryByVehicle();
             });
         }
@@ -1030,8 +1019,7 @@
         var btnCloseScanner = document.getElementById('btn-close-scanner');
         if (btnCloseScanner) {
             btnCloseScanner.addEventListener('click', function(e) {
-                console.log('[btn-close-scanner] clicked');
-                e.preventDefault();
+                        e.preventDefault();
                 closeScanner();
             });
         }
@@ -1039,8 +1027,7 @@
         var btnSnap = document.getElementById('btn-snap');
         if (btnSnap) {
             btnSnap.addEventListener('click', function(e) {
-                console.log('[btn-snap] clicked');
-                e.preventDefault();
+                        e.preventDefault();
                 capturePhoto();
             });
         }
@@ -1048,8 +1035,7 @@
         var btnRetake = document.getElementById('btn-retake');
         if (btnRetake) {
             btnRetake.addEventListener('click', function(e) {
-                console.log('[btn-retake] clicked');
-                e.preventDefault();
+                        e.preventDefault();
                 retakePhoto();
             });
         }
@@ -1057,8 +1043,7 @@
         var btnConfirmScan = document.getElementById('btn-confirm-scan');
         if (btnConfirmScan) {
             btnConfirmScan.addEventListener('click', function(e) {
-                console.log('[btn-confirm-scan] clicked');
-                e.preventDefault();
+                        e.preventDefault();
                 confirmScan();
             });
         }
@@ -1085,12 +1070,10 @@
             });
         }
         
-        console.log('[bindAllEvents] 事件绑定完成');
     }
 
     // ============ 初始化品牌下拉框 ============
     function initBrandSelect() {
-        console.log('[initBrandSelect] 开始');
         var brandSelect = document.getElementById('brand-select');
         if (!brandSelect) {
             console.error('[initBrandSelect] 找不到brand-select');
@@ -1104,12 +1087,10 @@
             opt.textContent = brand;
             brandSelect.appendChild(opt);
         });
-        console.log('[initBrandSelect] 完成，共' + brands.length + '个品牌');
     }
 
     // ============ 品牌变更 ============
     function onBrandChange() {
-        console.log('[onBrandChange] 开始');
         var brand = document.getElementById('brand-select').value;
         var seriesSelect = document.getElementById('series-select');
         var yearSelect = document.getElementById('year-select');
@@ -1136,12 +1117,10 @@
             opt.textContent = s;
             seriesSelect.appendChild(opt);
         });
-        console.log('[onBrandChange] 完成，品牌: ' + brand + ', 车系数: ' + series.length);
     }
 
     // ============ 车系变更 ============
     function onSeriesChange() {
-        console.log('[onSeriesChange] 开始');
         var brand = document.getElementById('brand-select').value;
         var series = document.getElementById('series-select').value;
         var yearSelect = document.getElementById('year-select');
@@ -1168,12 +1147,10 @@
                 yearSelect.appendChild(opt);
             });
         }
-        console.log('[onSeriesChange] 完成');
     }
 
     // ============ Tab切换 ============
     function switchTab(tab) {
-        console.log('[switchTab] tab: ' + tab);
         // 清除所有tab按钮active状态
         var scanBtn = document.getElementById('tab-scan-btn');
         var selectBtn = document.getElementById('tab-select-btn');
@@ -1360,7 +1337,7 @@
         // 🇯🇵 本田 Honda
         // ════════════════════════════════════════
         // 东风本田
-        'LVHAA2': { brand: '本田', model: '思域', battery: '12V 60Ah', specs: '243×175×175mm | 启停:否 | 紧紧凑家轿' },
+        'LVHAA2': { brand: '本田', model: '思域', battery: '12V 60Ah', specs: '243×175×175mm | 启停:否 | 紧凑家轿' },
         'LVHBB2': { brand: '本田', model: 'CR-V', battery: '12V 65Ah', specs: '230×175×220mm | 启停:否 | 紧凑SUV' },
         'LVHCC2': { brand: '本田', model: '英仕派', battery: '12V 70Ah', specs: '260×173×200mm | 启停:是 | 中型轿车' },
         'LVHDD2': { brand: '本田', model: 'HR-V/XR-V', battery: '12V 60Ah', specs: '243×175×190mm | 启停:否 | 小型SUV' },
@@ -1558,12 +1535,14 @@
         'LVGDD2': { brand: '广汽传祺', model: '影豹', battery: '12V 55Ah', specs: '243×175×190mm | 运动轿车' },
         'LVGEE2': { brand: '广汽传祺', model: 'M6', battery: '12V 65Ah', specs: '230×175×220mm | 家用MPV' },
         'LVGFF2': { brand: '广汽传祺', model: 'E9', battery: '12V 60Ah Li-ion', specs: '低压辅助电池 | 锂电池 | 插混MPV' },
-        // 埃安
-        'LVHAA2': { brand: '广汽埃安', model: 'AION S', battery: '12V 45Ah', specs: '238×129×203mm | 纯电紧凑轿车' },
-        'LVHBB2': { brand: '广汽埃安', model: 'AION V', battery: '12V 45Ah', specs: '238×129×203mm | 纯电紧凑SUV' },
-        'LVHCC2': { brand: '广汽埃安', model: 'AION Y', battery: '12V 45Ah', specs: '238×129×203mm | 纯电紧凑SUV' },
-        'LVHDD2': { brand: '广汽埃安', model: 'AION S Plus', battery: '12V 45Ah', specs: '238×129×203mm | 纯电改款' },
-        'LVHEE2': { brand: '广汽埃安', model: 'AION RT', battery: '12V 45Ah', specs: '238×129×203mm | 纯电紧凑轿车' },
+        // ════════════════════════════════════════
+        // 🇨🇳 广汽埃安 AION
+        // ════════════════════════════════════════
+        'LNGAA2': { brand: '广汽埃安', model: 'AION S', battery: '12V 45Ah', specs: '238×129×203mm | 纯电紧凑轿车' },
+        'LNGAB2': { brand: '广汽埃安', model: 'AION V', battery: '12V 45Ah', specs: '238×129×203mm | 纯电紧凑SUV' },
+        'LNGAC2': { brand: '广汽埃安', model: 'AION Y', battery: '12V 45Ah', specs: '238×129×203mm | 纯电紧凑SUV' },
+        'LNGAD2': { brand: '广汽埃安', model: 'AION S Plus', battery: '12V 45Ah', specs: '238×129×203mm | 纯电改款' },
+        'LNGAE2': { brand: '广汽埃安', model: 'AION RT', battery: '12V 45Ah', specs: '238×129×203mm | 纯电紧凑轿车' },
         
         // ════════════════════════════════════════
         // 🇨🇳 红旗 Hongqi
@@ -1648,7 +1627,6 @@
 
     // ============ VIN查询（主） ============
     function queryByVin() {
-        console.log('[queryByVin] 开始');
         try {
             // ✅ 先清空之前的结果，避免显示旧数据
             var resultCard = document.getElementById('result-card');
@@ -1678,8 +1656,7 @@
             if (errorEl) errorEl.classList.remove('show');
             
             var decoded = decodeVin(vin);
-            console.log('[queryByVin] 解码结果:', decoded);
-            
+                
             // ✅ 新逻辑：前6位精确匹配 → 前5位 → 前3位 → 展示所有车型让用户选择
             var matched = false;
             
@@ -1693,7 +1670,6 @@
                     alts: []
                 });
                 matched = true;
-                console.log('[queryByVin] 前6位精确匹配成功:', vin.substring(0, 6));
             }
             
             // 第2优先：前5位匹配
@@ -1708,7 +1684,6 @@
                             alts: []
                         });
                         matched = true;
-                        console.log('[queryByVin] 前5位匹配成功:', vin.substring(0, 5));
                         break;
                     }
                 }
@@ -1722,8 +1697,7 @@
                 // ✅ 不再返回第一个，而是展示所有车型让用户选择
                 showModelSelection(decoded.matchedBrand, seriesList, vin);
                 matched = true;
-                console.log('[queryByVin] 仅匹配到品牌，展示车型选择列表');
-            }
+                    }
             
             // 未匹配到任何数据
             if (!matched) {
@@ -1738,12 +1712,10 @@
             alert('查询出错: ' + e.message);
             console.error('[queryByVin]', e);
         }
-        console.log('[queryByVin] 结束');
     }
     
     // ============ 展示车型选择列表 ============
     function showModelSelection(brand, seriesList, vin) {
-        console.log('[showModelSelection] 品牌:', brand, '车型数:', seriesList.length);
         
         var resultSection = document.getElementById('result-card');
         if (!resultSection) {
@@ -1780,7 +1752,6 @@
     
     // ============ 用户选择车型后 ============
     function selectModel(brand, series, vin) {
-        console.log('[selectModel] 品牌:', brand, '车型:', series);
         
         var data = BATTERY_DB[brand][series];
         if (!data) {
@@ -1798,7 +1769,6 @@
 
     // ============ 使用拍照后的VIN查询 ============
     function queryByVinWithScanned() {
-        console.log('[queryByVinWithScanned] 开始');
         try {
             var scannedEl = document.getElementById('scanned-vin');
             var vin = '';
@@ -1827,7 +1797,6 @@
 
     // ============ 车型查询 ============
     function queryByVehicle() {
-        console.log('[queryByVehicle] 开始');
         try {
             var brand = document.getElementById('brand-select').value;
             var series = document.getElementById('series-select').value;
@@ -1856,12 +1825,10 @@
             alert('查询出错: ' + e.message);
             console.error('[queryByVehicle]', e);
         }
-        console.log('[queryByVehicle] 结束');
     }
 
     // ============ 显示结果 ============
     function showResult(result) {
-        console.log('[showResult] 开始显示结果:', result);
         try {
             var card = document.getElementById('result-card');
             if (!card) {
@@ -1897,8 +1864,7 @@
             
             card.classList.add('show');
             card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            console.log('[showResult] 显示完成');
-        } catch(e) {
+            } catch(e) {
             console.error('[showResult] 错误:', e);
             alert('显示结果时出错: ' + e.message);
         }
@@ -1931,12 +1897,10 @@
         })
         .then(function(response) { return response.json(); })
         .then(function(data) {
-            console.log('[autoRecognizeVin] OCR result:', data);
-            var vin = null;
+                var vin = null;
             if (data && data.ParsedResults && data.ParsedResults.length > 0) {
                 var fullText = data.ParsedResults[0].ParsedText || '';
-                console.log('[autoRecognizeVin] OCR text:', fullText);
-                vin = extractVinFromText(fullText);
+                        vin = extractVinFromText(fullText);
             }
             
             if (vin) {
@@ -1969,7 +1933,6 @@
     
     // ============ 原生相机处理 ============
     function initNativeCamera() {
-        console.log('[initNativeCamera] 开始');
         var nativeCamera = document.getElementById('native-camera');
         var albumPick = document.getElementById('album-pick');
         
@@ -1979,11 +1942,9 @@
         if (albumPick) {
             albumPick.addEventListener('change', handleNativeCapture);
         }
-        console.log('[initNativeCamera] 完成');
     }
     
     function handleNativeCapture(e) {
-        console.log('[handleNativeCapture] 开始');
         var file = e.target.files[0];
         if (!file) return;
         e.target.value = '';
@@ -2008,12 +1969,10 @@
             img.src = ev.target.result;
         };
         reader.readAsDataURL(file);
-        console.log('[handleNativeCapture] 完成');
     }
 
     // ============ 扫描功能 ============
     function capturePhoto() {
-        console.log('[capturePhoto] 开始');
         try {
             if (!snapCanvas) {
                 snapCanvas = document.createElement('canvas');
@@ -2049,8 +2008,7 @@
             if (hintEl) hintEl.innerHTML = '📸 拍照完成！<br>👆 <b>长按上方图片</b> → 点「识别文字」→ 复制17位车架号 → 粘贴到下方输入框';
             
             // 不做图像增强，直接显示原图（让微信OCR能识别）
-            console.log('[capturePhoto] 跳过图像增强，保持原图');
-            
+                
             if (captured) captured.classList.add('show');
             
             setTimeout(function() {
@@ -2060,11 +2018,9 @@
         } catch(e) {
             console.error('[capturePhoto] 错误:', e);
         }
-        console.log('[capturePhoto] 结束');
     }
 
     function retakePhoto() {
-        console.log('[retakePhoto] 开始');
         var video = document.getElementById('scanner-video');
         var preview = document.getElementById('snap-preview');
         var hintEl = document.getElementById('scanner-hint');
@@ -2083,12 +2039,10 @@
         if (scannedVin) scannedVin.value = '';
         
         if (hintEl) hintEl.innerHTML = '🎯 对准车架号，保持稳定，重新拍照';
-        console.log('[retakePhoto] 完成');
     }
 
     // ============ 打开扫描器 ============
     function openScanner() {
-        console.log('[openScanner] 开始');
         var overlay = document.getElementById('scanner-overlay');
         var video = document.getElementById('scanner-video');
         var hintEl = document.getElementById('scanner-hint');
@@ -2115,7 +2069,6 @@
     }
 
     function closeScanner() {
-        console.log('[closeScanner] 开始');
         var overlay = document.getElementById('scanner-overlay');
         var video = document.getElementById('scanner-video');
         var preview = document.getElementById('snap-preview');
@@ -2147,11 +2100,9 @@
         
         snapCanvas = null;
         snapCtx = null;
-        console.log('[closeScanner] 完成');
     }
 
     function confirmScan() {
-        console.log('[confirmScan] 开始');
         var vin = '';
         var overlayEl = document.getElementById('scanned-vin-overlay');
         if (overlayEl && overlayEl.value.trim()) {
@@ -2168,7 +2119,6 @@
         
         closeScanner();
         queryByVin();
-        console.log('[confirmScan] 完成');
     }
 
 
