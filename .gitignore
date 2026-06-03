@@ -9,6 +9,10 @@ ocr
 __pycache__/
 *.pyc
 
+# 环境变量（含密钥，不提交）
+.env
+!.env.example
+
 # 临时文件
 .reasonix/
 *.tmp
