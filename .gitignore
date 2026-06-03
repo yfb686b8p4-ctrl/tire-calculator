@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# 编译产物
+ocr
+__pycache__/
+*.pyc
+
+# 临时文件
+.reasonix/
+*.tmp
+*.log
