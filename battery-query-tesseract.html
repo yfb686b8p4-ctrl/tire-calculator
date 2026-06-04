@@ -1014,9 +1014,151 @@
         }
     }
 
-    // 从文本中提取VIN码
+    // VIN智能校正：修复OCR常见误识别
+    function correctVinOcrErrors(text) {
+        // 常见OCR误识别映射表
+        const ocrCorrections = {
+            // 字母误识别为其他字母
+            'N': 'L',  // N常被识别为L（开头）
+            'T': 'V',  // T→V
+            '2': 'V',  // 2→V
+            'D': 'B',  // D→B
+            '0': 'O',  // 0→O（但VIN不含O，所以后面会处理）
+            '1': 'I',  // 1→I（但VIN不含I）
+            '5': 'S',  // 5→S
+            '8': 'B',  // 8→B
+            // 数字误识别为字母
+            'B': '8',  // B→8
+            'S': '5',  // S→5
+            'G': '6',  // G→6
+            'Z': '2',  // Z→2
+            'A': '4',  // A→4
+        };
+        
+        // 先清理文本：只保留可能属于VIN的字符
+        let cleaned = text.toUpperCase()
+            .replace(/[^A-HJ-NPR-Z0-9]/g, ''); // 保留VIN合法字符
+        
+        // 如果长度不够，尝试从原始文本中提取
+        if (cleaned.length < 17) {
+            // 尝试提取所有字母数字组合
+            const allChars = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            if (allChars.length >= 17) {
+                cleaned = allChars;
+            }
+        }
+        
+        // 取前17个字符尝试
+        if (cleaned.length >= 17) {
+            const candidate = cleaned.substring(0, 17);
+            
+            // 尝试直接验证
+            if (validateVin(candidate) && validateVinCheckDigit(candidate)) {
+                return candidate;
+            }
+            
+            // 智能校正：根据VIN位置特征进行修正
+            return smartVinCorrection(candidate);
+        }
+        
+        return null;
+    }
+    
+    // 智能VIN校正：基于位置特征和校验位
+    function smartVinCorrection(vin) {
+        // VIN位置权重：某些位置更可能是数字或字母
+        // WMI(1-3): 字母+字母+字母/数字
+        // VDS(4-9): 混合
+        // VIS(10-17): 年份(10位)+工厂(11位)+序列号(12-17位数字)
+        
+        const positionHints = [
+            'LETTER', 'LETTER', 'ALNUM',  // WMI
+            'ALNUM', 'ALNUM', 'ALNUM', 'ALNUM', 'ALNUM', 'ALNUM',  // VDS
+            'LETTER', 'LETTER',           // VIS: 年份、工厂
+            'DIGIT', 'DIGIT', 'DIGIT', 'DIGIT', 'DIGIT', 'DIGIT'   // 序列号
+        ];
+        
+        const charMap = vin.split('');
+        
+        // 第一步：根据位置特征修正
+        for (let i = 0; i < 17; i++) {
+            const char = charMap[i];
+            const hint = positionHints[i];
+            
+            if (hint === 'DIGIT' && !/[0-9]/.test(char)) {
+                // 应该是数字但被识别为字母
+                if (char === 'B') charMap[i] = '8';
+                else if (char === 'S') charMap[i] = '5';
+                else if (char === 'G') charMap[i] = '6';
+                else if (char === 'Z') charMap[i] = '2';
+                else if (char === 'A') charMap[i] = '4';
+                else if (char === 'O') charMap[i] = '0'; // VIN不含O，一定是0
+                else if (char === 'I') charMap[i] = '1'; // VIN不含I，一定是1
+                else if (char === 'Q') charMap[i] = '0'; // VIN不含Q，可能是0
+            }
+            else if (hint === 'LETTER' && /[0-9]/.test(char)) {
+                // 应该是字母但被识别为数字
+                if (char === '0') charMap[i] = 'D'; // 0→D (WMI通常是字母)
+                else if (char === '1') charMap[i] = 'T';
+                else if (char === '5') charMap[i] = 'S';
+                else if (char === '8') charMap[i] = 'B';
+            }
+        }
+        
+        // 第二步：针对常见OCR错误进行替换
+        const ocrFixes = {
+            'N': ['L', 'M'],
+            'T': ['V', 'I'],
+            '2': ['V', 'Z'],
+            'D': ['B', 'O'],
+            '5': ['S', '6'],
+            '8': ['B', '3'],
+            '6': ['G', 'B'],
+            '0': ['D', 'O'],
+        };
+        
+        // 尝试生成候选VIN并验证校验位
+        const candidates = [];
+        
+        // 原始候选
+        const original = charMap.join('');
+        if (validateVin(original)) {
+            candidates.push(original);
+        }
+        
+        // 针对可能错误的位置生成变体
+        for (let i = 0; i < 17; i++) {
+            const char = original[i];
+            if (ocrFixes[char]) {
+                for (const replacement of ocrFixes[char]) {
+                    const variant = original.substring(0, i) + replacement + original.substring(i + 1);
+                    if (validateVin(variant) && validateVinCheckDigit(variant)) {
+                        candidates.push(variant);
+                    }
+                }
+            }
+        }
+        
+        // 返回第一个通过校验的候选
+        if (candidates.length > 0) {
+            // 优先返回校验位正确的
+            for (const c of candidates) {
+                if (validateVinCheckDigit(c)) return c;
+            }
+            return candidates[0];
+        }
+        
+        // 如果没有通过校验的，返回原始值让用户手动修正
+        return original;
+    }
+
+    // 从文本中提取VIN码（增强版）
     function extractVinFromText(text) {
-        // 匹配17位VIN（排除I/O/Q）
+        // 先尝试智能校正
+        const corrected = correctVinOcrErrors(text);
+        if (corrected) return corrected;
+        
+        // 回退到原始方法
         const pattern = /[A-HJ-NPR-Z0-9]{17}/g;
         const matches = text.match(pattern);
         
@@ -1029,7 +1171,7 @@
             }
         }
         
-        // 如果没有完全合法的，返回第一个候选（可能用户输入有误）
+        // 如果没有完全合法的，返回第一个候选
         return matches[0] || null;
     }
 
