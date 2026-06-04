@@ -546,8 +546,11 @@
             </div>
             <div class="btn-row">
                 <button class="btn btn-secondary" onclick="rescan()">重新拍照</button>
+                <button class="btn btn-secondary" onclick="selectFromAlbum()">📁 从相册选择</button>
                 <button class="btn btn-primary" onclick="confirmScan()">确认</button>
             </div>
+            <!-- 隐藏的文件选择器 -->
+            <input type="file" id="album-input" accept="image/*" style="display: none;" onchange="handleAlbumSelect(event)">
         </div>
     </div>
 
@@ -1213,6 +1216,90 @@
         ocrResult.classList.remove('show');
         frame.style.display = 'block';
         document.getElementById('scanned-vin').value = '';
+    }
+
+    // 从相册选择图片
+    function selectFromAlbum() {
+        document.getElementById('album-input').click();
+    }
+
+    // 处理相册选择的图片
+    async function handleAlbumSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const video = document.getElementById('scanner-video');
+        const capturedImage = document.getElementById('captured-image');
+        const capturedDiv = document.getElementById('scanner-captured');
+        const ocrResult = document.getElementById('ocr-result');
+        const frame = document.getElementById('scanner-frame');
+        const progressEl = document.getElementById('ocr-progress');
+        const statusEl = document.getElementById('ocr-status');
+
+        // 显示图片预览
+        const imageUrl = URL.createObjectURL(file);
+        capturedImage.src = imageUrl;
+        capturedImage.style.display = 'block';
+        video.style.display = 'none';
+        frame.style.display = 'none';
+
+        // 显示OCR进度
+        progressEl.classList.add('show');
+        statusEl.textContent = '正在识别VIN码...';
+
+        try {
+            // 加载图片到canvas进行OCR
+            const img = new Image();
+            img.src = imageUrl;
+            await new Promise((resolve) => { img.onload = resolve; });
+
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+
+            // 使用Tesseract.js识别
+            if (!tessaractWorker) {
+                await preloadTesseract();
+            }
+
+            const { data: { text, confidence } } = await tessaractWorker.recognize(canvas);
+
+            console.log('OCR识别结果:', text);
+            console.log('置信度:', confidence);
+
+            // 处理识别结果
+            const vin = extractVinFromText(text);
+
+            // 显示识别结果
+            document.getElementById('ocr-raw-text').textContent = text;
+            document.getElementById('ocr-result').classList.add('show');
+
+            if (vin) {
+                document.getElementById('scanned-vin').value = vin;
+                statusEl.textContent = `识别成功！置信度: ${Math.round(confidence)}%`;
+            } else {
+                statusEl.textContent = '未识别到完整VIN，请手动输入或编辑';
+                const possibleVin = text.replace(/[^A-HJ-NPR-Z0-9]/g, '').substring(0, 17);
+                if (possibleVin.length >= 10) {
+                    document.getElementById('scanned-vin').value = possibleVin;
+                }
+            }
+
+            // 显示确认界面
+            capturedDiv.classList.add('show');
+            progressEl.classList.remove('show');
+
+        } catch (err) {
+            console.error('相册图片识别错误:', err);
+            statusEl.textContent = '识别失败，请手动输入VIN';
+            progressEl.classList.remove('show');
+            capturedDiv.classList.add('show');
+        }
+
+        // 清空input，允许重复选择同一文件
+        event.target.value = '';
     }
 
     function confirmScan() {
