@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>电池型号查询 - Tesseract.js版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 16px;
+            padding-bottom: 100px;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            color: #f7b731;
+            font-size: 1.8rem;
+            margin-bottom: 4px;
+            text-shadow: 0 2px 4px rgba(247, 183, 49, 0.3);
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+        }
+        .card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(247, 183, 49, 0.2);
+            margin-bottom: 16px;
+        }
+        .card h2 {
+            color: #f7b731;
+            font-size: 1.1rem;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .input-group { margin-bottom: 14px; }
+        .input-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: #b0b0b0;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #2d3a5a;
+            border-radius: 10px;
+            background: #1a1a2e;
+            color: #fff;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #f7b731;
+        }
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+        .btn {
+            flex: 1;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #f7b731, #faa61a);
+            color: #1a1a2e;
+        }
+        .btn-primary:active { transform: scale(0.98); opacity: 0.9; }
+        .btn-secondary {
+            background: #2d3a5a;
+            color: #e0e0e0;
+        }
+        .btn-secondary:active { background: #3d4a6a; }
+        .btn-scan {
+            background: linear-gradient(135deg, #00b894, #00a884);
+            color: #fff;
+        }
+        .result-card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 2px solid #00b894;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .result-card.show { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .result-title {
+            color: #00b894;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .result-battery {
+            background: #1a1a2e;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border-left: 4px solid #f7b731;
+        }
+        .result-battery .model {
+            color: #f7b731;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .result-battery .specs {
+            color: #aaa;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        .result-battery .specs span {
+            color: #fff;
+            font-weight: 500;
+        }
+        .result-alts {
+            background: #1a1a2e;
+            border-radius: 10px;
+            padding: 14px;
+            border-left: 4px solid #6c5ce7;
+        }
+        .result-alts .alts-title {
+            color: #6c5ce7;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+        .result-alts .alt-item {
+            display: inline-block;
+            background: #2d3a5a;
+            color: #e0e0e0;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            margin: 4px 4px 4px 0;
+        }
+        .vehicle-info {
+            background: #1a1a2e;
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+        .vehicle-info .vin-display {
+            color: #f7b731;
+            font-family: monospace;
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+        }
+        /* Scanner overlay - Tesseract.js版 */
+        .scanner-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #000;
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+        }
+        .scanner-overlay.show { display: flex; }
+        .scanner-header {
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+        .scanner-header h3 {
+            color: #fff;
+            font-size: 1rem;
+        }
+        .scanner-close {
+            background: #e63946;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .scanner-video-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #scanner-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none; /* 隐藏视频，直接拍照 */
+        }
+        /* 拍照预览 */
+        #captured-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        /* VIN识别引导框 */
+        .scanner-frame {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85%;
+            max-width: 320px;
+            height: 60px;
+            border: 3px solid #00b894;
+            border-radius: 8px;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.6);
+            z-index: 5;
+        }
+        .scanner-frame::before,
+        .scanner-frame::after,
+        .scanner-frame .corner-bl,
+        .scanner-frame .corner-br {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f7b731;
+        }
+        .scanner-frame::before {
+            top: -3px;
+            left: -3px;
+            border-right: none;
+            border-bottom: none;
+        }
+        .scanner-frame::after {
+            top: -3px;
+            right: -3px;
+            border-left: none;
+            border-bottom: none;
+        }
+        .corner-bl {
+            bottom: -3px;
+            left: -3px;
+            border-right: none;
+            border-top: none;
+        }
+        .corner-br {
+            bottom: -3px;
+            right: -3px;
+            border-left: none;
+            border-top: none;
+        }
+        /* 扫描线动画 */
+        .scanner-frame .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #00b894;
+            animation: scanLine 2s linear infinite;
+            box-shadow: 0 0 10px #00b894;
+        }
+        @keyframes scanLine {
+            0%, 100% { top: 0; }
+            50% { top: calc(100% - 3px); }
+        }
+        .scanner-hint {
+            padding: 20px;
+            text-align: center;
+            background: rgba(0,0,0,0.8);
+            color: #aaa;
+            font-size: 0.9rem;
+            z-index: 10;
+        }
+        .scanner-hint .hint-icon {
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+            display: block;
+        }
+        /* OCR识别进度 */
+        .ocr-progress {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            z-index: 20;
+            display: none;
+        }
+        .ocr-progress.show { display: block; }
+        .ocr-progress .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f7b731;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .ocr-progress .progress-text {
+            color: #fff;
+            font-size: 1rem;
+        }
+        .scanner-captured {
+            display: none;
+            padding: 16px;
+            background: #1a1a2e;
+            z-index: 10;
+        }
+        .scanner-captured.show { display: block; }
+        .scanner-captured .input-group {
+            margin-bottom: 12px;
+        }
+        .scanner-captured .btn-row { margin-top: 12px; }
+        /* Tab switcher */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .tab {
+            flex: 1;
+            padding: 12px;
+            background: #2d3a5a;
+            border: none;
+            border-radius: 10px;
+            color: #aaa;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background: linear-gradient(135deg, #f7b731, #faa61a);
+            color: #1a1a2e;
+            font-weight: 600;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        /* Loading state */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+        /* Error state */
+        .error-msg {
+            background: rgba(230, 57, 70, 0.2);
+            border: 1px solid #e63946;
+            border-radius: 8px;
+            padding: 12px;
+            color: #e63946;
+            font-size: 0.9rem;
+            margin-top: 12px;
+            display: none;
+        }
+        .error-msg.show { display: block; }
+        /* VIN输入自动格式化 */
+        .vin-input-group {
+            position: relative;
+        }
+        .vin-input-group input {
+            letter-spacing: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+            padding: 16px;
+            text-align: center;
+        }
+        .vin-input-group .vin-hint {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #00b894;
+            font-size: 0.85rem;
+        }
+        /* OCR结果展示 */
+        .ocr-result {
+            background: #1a1a2e;
+            border-radius: 10px;
+            padding: 14px;
+            margin-top: 12px;
+            font-size: 0.85rem;
+            color: #aaa;
+            display: none;
+        }
+        .ocr-result.show { display: block; }
+        .ocr-result .ocr-text {
+            color: #fff;
+            font-family: monospace;
+            font-size: 1rem;
+            margin-top: 8px;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔋 电池型号查询</h1>
+        <p class="subtitle">Tesseract.js免费OCR识别</p>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('scan')">📷 扫码/VIN</button>
+            <button class="tab" onclick="switchTab('select')">🚗 车型选择</button>
+        </div>
+
+        <!-- Tab 1: Scan / Manual VIN -->
+        <div id="tab-scan" class="tab-content active">
+            <div class="card">
+                <h2>🔍 车架号查询</h2>
+                <div class="input-group vin-input-group">
+                    <label>车架号 (VIN) - 17位</label>
+                    <input type="text" id="vin-input" placeholder="例: LSVAU2180N2182601" maxlength="17" autocomplete="off" style="text-transform: uppercase;">
+                    <span class="vin-hint" id="vin-status"></span>
+                </div>
+                <div class="error-msg" id="vin-error">车架号格式不正确，请输入17位VIN码（不含I/O/Q）</div>
+                <div class="btn-row">
+                    <button class="btn btn-scan" onclick="startScanner()">📷 拍照识别</button>
+                    <button class="btn btn-primary" onclick="queryByVin()">查询</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Vehicle Select -->
+        <div id="tab-select" class="tab-content">
+            <div class="card">
+                <h2>🚗 选择车型</h2>
+                <div class="input-group">
+                    <label>品牌</label>
+                    <select id="brand-select" onchange="onBrandChange()">
+                        <option value="">-- 请选择品牌 --</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>车系</label>
+                    <select id="series-select" onchange="onSeriesChange()" disabled>
+                        <option value="">-- 先选品牌 --</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>年份</label>
+                    <select id="year-select" disabled>
+                        <option value="">-- 先选车系 --</option>
+                    </select>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="queryByVehicle()" style="flex:2">查询电池型号</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Area -->
+        <div class="result-card" id="result-card">
+            <div class="result-title">✅ 查询结果</div>
+            <div class="vehicle-info" id="vehicle-info"></div>
+            <div class="result-battery">
+                <div class="model" id="battery-model"></div>
+                <div class="specs" id="battery-specs"></div>
+            </div>
+            <div class="result-alts" id="result-alts">
+                <div class="alts-title">💡 替代型号</div>
+                <div id="alt-models"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scanner Overlay - Tesseract.js版 -->
+    <div class="scanner-overlay" id="scanner-overlay">
+        <div class="scanner-header">
+            <h3>📷 扫描车架号</h3>
+            <button class="scanner-close" onclick="closeScanner()">关闭</button>
+        </div>
+        <div class="scanner-video-container">
+            <video id="scanner-video" autoplay playsinline></video>
+            <img id="captured-image" alt="拍照预览">
+            <div class="scanner-frame" id="scanner-frame">
+                <div class="scan-line"></div>
+                <div class="corner-bl"></div>
+                <div class="corner-br"></div>
+            </div>
+            <!-- OCR识别进度 -->
+            <div class="ocr-progress" id="ocr-progress">
+                <div class="spinner"></div>
+                <div class="progress-text" id="ocr-status">正在加载OCR模型...</div>
+            </div>
+        </div>
+        <div class="scanner-hint">
+            <span class="hint-icon">📋</span>
+            将车架号对准框内，保持稳定
+            <br><br>
+            <button class="btn btn-scan" onclick="captureAndRecognize()" style="width: 80%; max-width: 300px;">📷 拍照并识别</button>
+        </div>
+        <div class="scanner-captured" id="scanner-captured">
+            <div class="input-group">
+                <label>识别到的车架号</label>
+                <input type="text" id="scanned-vin" maxlength="17" style="text-transform: uppercase; letter-spacing: 3px; font-family: monospace; font-size: 1.2rem; text-align: center;">
+            </div>
+            <div class="ocr-result" id="ocr-result">
+                <div>OCR原始识别结果：</div>
+                <div class="ocr-text" id="ocr-raw-text"></div>
+            </div>
+            <div class="btn-row">
+                <button class="btn btn-secondary" onclick="rescan()">重新拍照</button>
+                <button class="btn btn-primary" onclick="confirmScan()">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tesseract.js库 -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    
+    <script>
+    // ============ 电池数据库 ============
+    const BATTERY_DB = {
+        // 大众
+        '大众': {
+            '朗逸': { years: ['2020-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | 极性: 极性朝向右侧', alts: ['风帆Sail 6-QW-60', '骆驼6-QW-60', '瓦尔塔H5 560 150 060'] },
+            '宝来': { years: ['2019-2024'], battery: '12V 60Ah', specs: '规格: 243×175×190mm | 冷启动电流: 540A', alts: ['风帆6-QW-60', '统一6-QW-60', '超威6-QW-60'] },
+            '速腾': { years: ['2020-2024'], battery: '12V 72Ah', specs: '规格: 278×175×190mm | 极性: 极性朝向右侧', alts: ['风帆Sail 6-QW-72', '骆驼6-QW-72', '瓦尔塔H6 570 150 064'] },
+            '帕萨特': { years: ['2019-2024'], battery: '12V 72Ah', specs: '规格: 278×175×190mm | 启停功能支持', alts: ['风帆6-QW-72 AGM', '瓦尔塔H7 680 150 082', '博世S6 AGM'] },
+            '迈腾': { years: ['2018-2024'], battery: '12V 72Ah', specs: '规格: 278×175×190mm | 启停系统兼容', alts: ['风帆6-QW-72 AGM', '瓦尔塔H7 AGM', '骆驼AGM 6-QW-72'] },
+        },
+        // 丰田
+        '丰田': {
+            '卡罗拉': { years: ['2019-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm | 极性: 极性朝向右侧', alts: ['汤浅6-QW-70', '统一6-QW-70', '风帆6-QW-70'] },
+            '凯美瑞': { years: ['2018-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm | 启停支持', alts: ['汤浅6-QW-70L', '统一6-QW-70', '骆驼6-QW-70'] },
+            'RAV4荣放': { years: ['2019-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm | 极性: 左侧', alts: ['汤浅6-QW-70', '风帆6-QW-70', '超威6-QW-70'] },
+            '亚洲龙': { years: ['2019-2024'], battery: '12V 80Ah', specs: '规格: 315×175×190mm | 启停系统', alts: ['瓦尔塔H8 800 150 110', '风帆6-QW-80', '汤浅6-QW-80'] },
+            '汉兰达': { years: ['2018-2024'], battery: '12V 80Ah', specs: '规格: 315×175×190mm | 四驱版更大容量', alts: ['瓦尔塔H8', '汤浅6-QW-80', '统一6-QW-80'] },
+            '雷凌': { years: ['2020-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm | 极性: 右侧', alts: ['汤浅6-QW-70', '风帆6-QW-70', '骆驼6-QW-70'] },
+        },
+        // 本田
+        '本田': {
+            '思域': { years: ['2019-2024'], battery: '12V 60Ah', specs: '规格: 243×175×175mm | 极性: 左侧', alts: ['统一6-QW-60', '风帆6-QW-60', '汤浅6-QW-60'] },
+            'CR-V': { years: ['2018-2024'], battery: '12V 65Ah', specs: '规格: 230×175×220mm | 极性: 左侧', alts: ['统一6-QW-65', '风帆6-QW-65', '汤浅6-QW-65'] },
+            '雅阁': { years: ['2018-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm | 启停支持', alts: ['统一6-QW-70', '汤浅6-QW-70', '风帆6-QW-70'] },
+            '皓影': { years: ['2020-2024'], battery: '12V 65Ah', specs: '规格: 230×175×220mm | 极性: 左侧', alts: ['统一6-QW-65', '风帆6-QW-65', '汤浅6-QW-65'] },
+            '飞度': { years: ['2020-2024'], battery: '12V 45Ah', specs: '规格: 238×129×203mm | 极性: 右侧', alts: ['统一6-QW-45', '风帆6-QW-45', '超威6-QW-45'] },
+        },
+        // 宝马
+        '宝马': {
+            '3系': { years: ['2019-2024'], battery: '12V 90Ah AGM', specs: '规格: 354×175×190mm | 启停系统必备AGM', alts: ['瓦尔塔H9 900 150 105 AGM', '博世S9 AGM', '风帆6-QW-90 AGM'] },
+            '5系': { years: ['2018-2024'], battery: '12V 90Ah AGM', specs: '规格: 354×175×190mm | 启停系统', alts: ['瓦尔塔H9 AGM', '博世S9 AGM', '风帆AGM 6-QW-90'] },
+            'X3': { years: ['2019-2024'], battery: '12V 90Ah AGM', specs: '规格: 354×175×190mm | 四驱系统', alts: ['瓦尔塔H9 AGM', '博世S9 AGM', '风帆AGM'] },
+            'X5': { years: ['2018-2024'], battery: '12V 100Ah AGM', specs: '规格: 394×175×190mm | 大型SUV', alts: ['瓦尔塔H10 AGM', '博世S10 AGM', '风帆6-QW-100 AGM'] },
+        },
+        // 奔驰
+        '奔驰': {
+            'C级': { years: ['2019-2024'], battery: '12V 80Ah AGM', specs: '规格: 315×175×190mm | 启停必备', alts: ['瓦尔塔H8 AGM', '博世S8 AGM', '风帆AGM 6-QW-80'] },
+            'E级': { years: ['2018-2024'], battery: '12V 92Ah AGM', specs: '规格: 354×175×190mm | 启停系统', alts: ['瓦尔塔H9 AGM', '博世S9 AGM', '风帆AGM 6-QW-92'] },
+            'GLC': { years: ['2019-2024'], battery: '12V 92Ah AGM', specs: '规格: 354×175×190mm | SUV', alts: ['瓦尔塔H9 AGM', '博世S9 AGM', '风帆AGM'] },
+            'S级': { years: ['2018-2024'], battery: '12V 100Ah AGM', specs: '规格: 394×175×190mm | 旗舰车型', alts: ['瓦尔塔H10 AGM', '博世S10 AGM', '风帆AGM 6-QW-100'] },
+        },
+        // 奥迪
+        '奥迪': {
+            'A4L': { years: ['2019-2024'], battery: '12V 80Ah AGM', specs: '规格: 315×175×190mm | 启停系统', alts: ['瓦尔塔H8 AGM', '风帆AGM 6-QW-80', '博世S8 AGM'] },
+            'A6L': { years: ['2018-2024'], battery: '12V 92Ah AGM', specs: '规格: 354×175×190mm | 启停支持', alts: ['瓦尔塔H9 AGM', '风帆AGM 6-QW-92', '博世S9 AGM'] },
+            'Q5L': { years: ['2019-2024'], battery: '12V 80Ah AGM', specs: '规格: 315×175×190mm | SUV', alts: ['瓦尔塔H8 AGM', '风帆AGM', '博世S8 AGM'] },
+            'Q3': { years: ['2019-2024'], battery: '12V 70Ah', specs: '规格: 260×173×200mm', alts: ['瓦尔塔H7', '风帆6-QW-70', '博世S7'] },
+        },
+    };
+
+    // VIN前缀解码库 (简化版)
+    const VIN_DECODER = {
+        'LFV': '大众/一汽-大众',
+        'LSV': '大众/上汽大众',
+        'WVW': '大众/进口大众',
+        'LHG': '本田/广汽本田',
+        'HMV': '本田/进口本田',
+        'LNJ': '吉利/吉利汽车',
+        'LBV': '宝马/华晨宝马',
+        'WBA': '宝马/进口宝马',
+        'LE4': '奔驰/北京奔驰',
+        'WDD': '奔驰/进口奔驰',
+        'LFMA': '奥迪/一汽-大众奥迪',
+        'WAU': '奥迪/进口奥迪',
+        'LGBH': '日产/东风日产',
+        'LGBL': '日产/郑州日产',
+        'LSG': '雪佛兰/上汽通用雪佛兰',
+        'LTV': '丰田/一汽丰田',
+        'LFA': '丰田/广汽丰田',
+        'JHM': '丰田/进口丰田',
+        'LMG': '比亚迪/比亚迪',
+        'LNY': '蔚来/蔚来',
+        'LXP': '小鹏/小鹏',
+    };
+
+    // ============ 全局变量 ============
+    let stream = null;
+    let tessaractWorker = null; // Tesseract.js工作线程
+    let capturedImageData = null; // 存储拍照图片数据
+
+    // ============ 初始化 ============
+    document.addEventListener('DOMContentLoaded', function() {
+        initBrandSelect();
+        initVinInputValidation();
+    });
+
+    function initBrandSelect() {
+        const brandSelect = document.getElementById('brand-select');
+        const brands = Object.keys(BATTERY_DB).sort();
+        brands.forEach(brand => {
+            const opt = document.createElement('option');
+            opt.value = brand;
+            opt.textContent = brand;
+            brandSelect.appendChild(opt);
+        });
+    }
+
+    // VIN输入实时验证
+    function initVinInputValidation() {
+        const vinInput = document.getElementById('vin-input');
+        const vinStatus = document.getElementById('vin-status');
+        
+        vinInput.addEventListener('input', function(e) {
+            let value = e.target.value.toUpperCase();
+            // 自动过滤非法字符（I/O/Q）
+            value = value.replace(/[IOQ]/g, '');
+            e.target.value = value;
+            
+            // 实时验证
+            if (value.length === 0) {
+                vinStatus.textContent = '';
+                vinStatus.style.color = '#888';
+            } else if (value.length < 17) {
+                vinStatus.textContent = `${value.length}/17`;
+                vinStatus.style.color = '#faa61a';
+            } else if (validateVin(value)) {
+                vinStatus.textContent = '✓ 格式正确';
+                vinStatus.style.color = '#00b894';
+            } else {
+                vinStatus.textContent = '✗ 格式错误';
+                vinStatus.style.color = '#e63946';
+            }
+        });
+    }
+
+    function onBrandChange() {
+        const brand = document.getElementById('brand-select').value;
+        const seriesSelect = document.getElementById('series-select');
+        const yearSelect = document.getElementById('year-select');
+        
+        seriesSelect.innerHTML = '<option value="">-- 请选择车系 --</option>';
+        yearSelect.innerHTML = '<option value="">-- 先选车系 --</option>';
+        yearSelect.disabled = true;
+        
+        if (!brand) {
+            seriesSelect.disabled = true;
+            return;
+        }
+        
+        seriesSelect.disabled = false;
+        const series = Object.keys(BATTERY_DB[brand] || {}).sort();
+        series.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s;
+            opt.textContent = s;
+            seriesSelect.appendChild(opt);
+        });
+    }
+
+    function onSeriesChange() {
+        const brand = document.getElementById('brand-select').value;
+        const series = document.getElementById('series-select').value;
+        const yearSelect = document.getElementById('year-select');
+        
+        yearSelect.innerHTML = '<option value="">-- 请选择年份 --</option>';
+        
+        if (!brand || !series) {
+            yearSelect.disabled = true;
+            return;
+        }
+        
+        yearSelect.disabled = false;
+        const data = BATTERY_DB[brand]?.[series];
+        if (data?.years) {
+            data.years.forEach(y => {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.textContent = y;
+                yearSelect.appendChild(opt);
+            });
+        }
+    }
+
+    // ============ Tab切换 ============
+    function switchTab(tab) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        
+        event.target.classList.add('active');
+        document.getElementById('tab-' + tab).classList.add('active');
+    }
+
+    // ============ VIN验证 ============
+    function validateVin(vin) {
+        return vin.length === 17 && /^[A-HJ-NPR-Z0-9]{17}$/i.test(vin);
+    }
+
+    // VIN校验位验证（ISO 3779）
+    function validateVinCheckDigit(vin) {
+        if (vin.length !== 17) return false;
+        
+        const charMap = {
+            '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
+            'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'F': 6, 'G': 7, 'H': 8,
+            'J': 1, 'K': 2, 'L': 3, 'M': 4, 'N': 5, 'P': 7, 'R': 9,
+            'S': 2, 'T': 3, 'U': 4, 'V': 5, 'W': 6, 'X': 7, 'Y': 8, 'Z': 9
+        };
+        
+        const weights = [8, 7, 6, 5, 4, 3, 2, 10, 0, 9, 8, 7, 6, 5, 4, 3, 2];
+        
+        let total = 0;
+        for (let i = 0; i < 17; i++) {
+            const char = vin[i].toUpperCase();
+            if (!(char in charMap)) return false;
+            total += charMap[char] * weights[i];
+        }
+        
+        const checkDigit = total % 11;
+        const expectedCheckDigit = (checkDigit === 10) ? 'X' : checkDigit.toString();
+        
+        return vin[8].toUpperCase() === expectedCheckDigit;
+    }
+
+    function decodeVin(vin) {
+        const prefix = vin.substring(0, 3).toUpperCase();
+        const info = VIN_DECODER[prefix] || '未知品牌';
+        
+        const brand = Object.keys(BATTERY_DB).find(b => info.includes(b));
+        
+        return {
+            prefix: prefix,
+            maker: info,
+            matchedBrand: brand || null,
+            year: vin.charAt(9)
+        };
+    }
+
+    function queryByVin() {
+        const vin = document.getElementById('vin-input').value.trim().toUpperCase();
+        const errorEl = document.getElementById('vin-error');
+        
+        if (!validateVin(vin)) {
+            errorEl.textContent = '车架号格式不正确，请输入17位VIN码（不含I/O/Q）';
+            errorEl.classList.add('show');
+            return;
+        }
+        
+        // 校验位验证
+        if (!validateVinCheckDigit(vin)) {
+            errorEl.textContent = '⚠️ VIN码校验位不正确，请检查是否输入错误';
+            errorEl.classList.add('show');
+            return;
+        }
+        
+        errorEl.classList.remove('show');
+        
+        const decoded = decodeVin(vin);
+        
+        if (decoded.matchedBrand) {
+            const brandData = BATTERY_DB[decoded.matchedBrand];
+            const firstSeries = Object.keys(brandData)[0];
+            const data = brandData[firstSeries];
+            
+            showResult({
+                vehicle: `${decoded.maker} | VIN: ${vin}`,
+                battery: data.battery,
+                specs: data.specs,
+                alts: data.alts || []
+            });
+        } else {
+            showResult({
+                vehicle: `品牌: ${decoded.maker} | VIN: ${vin}`,
+                battery: '需通过VIN确认品牌后查询',
+                specs: '建议：使用「车型选择」功能直接选择您的车型',
+                alts: []
+            });
+        }
+    }
+
+    // ============ 车型查询 ============
+    function queryByVehicle() {
+        const brand = document.getElementById('brand-select').value;
+        const series = document.getElementById('series-select').value;
+        const year = document.getElementById('year-select').value;
+        
+        if (!brand || !series) {
+            alert('请选择品牌和车系');
+            return;
+        }
+        
+        const data = BATTERY_DB[brand]?.[series];
+        if (!data) {
+            alert('未找到该车型数据');
+            return;
+        }
+        
+        const vehicleText = year ? `${brand} ${series} (${year})` : `${brand} ${series}`;
+        
+        showResult({
+            vehicle: vehicleText,
+            battery: data.battery,
+            specs: data.specs,
+            alts: data.alts || []
+        });
+    }
+
+    // ============ 显示结果 ============
+    function showResult(result) {
+        const card = document.getElementById('result-card');
+        
+        document.getElementById('vehicle-info').innerHTML = `
+            <strong>📍 车型:</strong> <span class="vin-display">${result.vehicle}</span>
+        `;
+        
+        document.getElementById('battery-model').textContent = result.battery;
+        document.getElementById('battery-specs').innerHTML = result.specs
+            .replace(/\|/g, '<br>')
+            .replace(/规格:/g, '<span>规格:</span>')
+            .replace(/极性:/g, '<span>极性:</span>')
+            .replace(/冷启动电流:/g, '<span>冷启动电流:</span>')
+            .replace(/启停/g, '<span>启停</span>');
+        
+        const altsContainer = document.getElementById('alt-models');
+        if (result.alts && result.alts.length > 0) {
+            document.getElementById('result-alts').style.display = 'block';
+            altsContainer.innerHTML = result.alts.map(alt => 
+                `<span class="alt-item">${alt}</span>`
+            ).join('');
+        } else {
+            document.getElementById('result-alts').style.display = 'none';
+        }
+        
+        card.classList.add('show');
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // ============ 拍照识别功能（Tesseract.js版）============
+    
+    async function startScanner() {
+        const overlay = document.getElementById('scanner-overlay');
+        const video = document.getElementById('scanner-video');
+        
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { 
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            });
+            video.srcObject = stream;
+            overlay.classList.add('show');
+            
+            // 预加载Tesseract.js模型（后台）
+            preloadTesseract();
+            
+        } catch (err) {
+            alert('无法访问相机，请检查权限设置');
+            console.error(err);
+        }
+    }
+
+    // 预加载Tesseract.js
+    async function preloadTesseract() {
+        if (tessaractWorker) return; // 已加载
+        
+        const progressEl = document.getElementById('ocr-progress');
+        const statusEl = document.getElementById('ocr-status');
+        
+        try {
+            progressEl.classList.add('show');
+            statusEl.textContent = '正在加载OCR模型...';
+            
+            // 创建Tesseract工作线程
+            tessaractWorker = await Tesseract.createWorker('eng', 1, {
+                logger: m => {
+                    if (m.status === 'recognizing') {
+                        statusEl.textContent = `正在识别... ${Math.round(m.progress * 100)}%`;
+                    }
+                }
+            });
+            
+            statusEl.textContent = 'OCR模型加载完成！';
+            setTimeout(() => {
+                progressEl.classList.remove('show');
+            }, 1000);
+            
+        } catch (err) {
+            console.error('Tesseract.js加载失败:', err);
+            statusEl.textContent = 'OCR模型加载失败，请手动输入VIN';
+            setTimeout(() => {
+                progressEl.classList.remove('show');
+            }, 2000);
+        }
+    }
+
+    // 拍照并识别
+    async function captureAndRecognize() {
+        const video = document.getElementById('scanner-video');
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        
+        // 设置canvas尺寸
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        // 绘制当前视频帧到canvas
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // 显示拍照预览
+        const capturedImage = document.getElementById('captured-image');
+        capturedImage.src = canvas.toDataURL('image/jpeg', 0.9);
+        capturedImage.style.display = 'block';
+        video.style.display = 'none';
+        
+        // 隐藏引导框
+        document.getElementById('scanner-frame').style.display = 'none';
+        
+        // 显示OCR进度
+        const progressEl = document.getElementById('ocr-progress');
+        const statusEl = document.getElementById('ocr-status');
+        progressEl.classList.add('show');
+        statusEl.textContent = '正在识别VIN码...';
+        
+        try {
+            // 使用Tesseract.js识别
+            if (!tessaractWorker) {
+                await preloadTesseract();
+            }
+            
+            const { data: { text, confidence } } = await tessaractWorker.recognize(canvas);
+            
+            console.log('OCR识别结果:', text);
+            console.log('置信度:', confidence);
+            
+            // 处理识别结果
+            const vin = extractVinFromText(text);
+            
+            // 显示识别结果
+            document.getElementById('ocr-raw-text').textContent = text;
+            document.getElementById('ocr-result').classList.add('show');
+            
+            if (vin) {
+                document.getElementById('scanned-vin').value = vin;
+                statusEl.textContent = `识别成功！置信度: ${Math.round(confidence)}%`;
+            } else {
+                // 未识别到合法VIN，显示原始文本让用户手动选择
+                statusEl.textContent = '未识别到完整VIN，请手动输入或编辑';
+                // 尝试从文本中提取可能的VIN片段
+                const possibleVin = text.replace(/[^A-HJ-NPR-Z0-9]/g, '').substring(0, 17);
+                if (possibleVin.length >= 10) {
+                    document.getElementById('scanned-vin').value = possibleVin;
+                }
+            }
+            
+            // 显示确认界面
+            document.getElementById('scanner-captured').classList.add('show');
+            progressEl.classList.remove('show');
+            
+        } catch (err) {
+            console.error('OCR识别错误:', err);
+            statusEl.textContent = '识别失败，请手动输入VIN';
+            progressEl.classList.remove('show');
+            
+            // 显示手动输入界面
+            document.getElementById('scanner-captured').classList.add('show');
+        }
+    }
+
+    // 从文本中提取VIN码
+    function extractVinFromText(text) {
+        // 匹配17位VIN（排除I/O/Q）
+        const pattern = /[A-HJ-NPR-Z0-9]{17}/g;
+        const matches = text.match(pattern);
+        
+        if (!matches) return null;
+        
+        // 验证每个候选VIN
+        for (const candidate of matches) {
+            if (validateVin(candidate) && validateVinCheckDigit(candidate)) {
+                return candidate;
+            }
+        }
+        
+        // 如果没有完全合法的，返回第一个候选（可能用户输入有误）
+        return matches[0] || null;
+    }
+
+    function closeScanner() {
+        const overlay = document.getElementById('scanner-overlay');
+        const video = document.getElementById('scanner-video');
+        const capturedImage = document.getElementById('captured-image');
+        const capturedDiv = document.getElementById('scanner-captured');
+        const ocrResult = document.getElementById('ocr-result');
+        const frame = document.getElementById('scanner-frame');
+        
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+        
+        video.srcObject = null;
+        video.style.display = 'none';
+        capturedImage.src = '';
+        capturedImage.style.display = 'none';
+        capturedDiv.classList.remove('show');
+        ocrResult.classList.remove('show');
+        frame.style.display = 'block';
+        overlay.classList.remove('show');
+        document.getElementById('scanned-vin').value = '';
+    }
+
+    function rescan() {
+        const video = document.getElementById('scanner-video');
+        const capturedImage = document.getElementById('captured-image');
+        const capturedDiv = document.getElementById('scanner-captured');
+        const ocrResult = document.getElementById('ocr-result');
+        const frame = document.getElementById('scanner-frame');
+        
+        // 恢复视频预览
+        video.style.display = 'block';
+        capturedImage.style.display = 'none';
+        capturedDiv.classList.remove('show');
+        ocrResult.classList.remove('show');
+        frame.style.display = 'block';
+        document.getElementById('scanned-vin').value = '';
+    }
+
+    function confirmScan() {
+        const vin = document.getElementById('scanned-vin').value.trim().toUpperCase();
+        
+        if (!validateVin(vin)) {
+            alert('车架号格式不正确，请重新扫描或手动输入');
+            return;
+        }
+        
+        document.getElementById('vin-input').value = vin;
+        closeScanner();
+        queryByVin();
+    }
+
+    // VIN输入自动大写
+    document.getElementById('vin-input').addEventListener('input', function(e) {
+        e.target.value = e.target.value.toUpperCase();
+    });
+
+    document.getElementById('scanned-vin').addEventListener('input', function(e) {
+        e.target.value = e.target.value.toUpperCase();
+    });
+    </script>
+</body>
+</html>
