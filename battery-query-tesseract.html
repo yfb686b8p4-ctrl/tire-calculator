@@ -459,8 +459,11 @@
                     <span class="vin-hint" id="vin-status"></span>
                 </div>
                 <div class="error-msg" id="vin-error">车架号格式不正确，请输入17位VIN码（不含I/O/Q）</div>
+                <!-- 隐藏的文件选择器（直接选择） -->
+                <input type="file" id="album-input-direct" accept="image/*" style="display: none;" onchange="handleAlbumSelectDirect(event)">
                 <div class="btn-row">
                     <button class="btn btn-scan" onclick="startScanner()">📷 拍照识别</button>
+                    <button class="btn btn-secondary" onclick="selectFromAlbumDirect()" style="background: #ff9800;">📁 相册图片</button>
                     <button class="btn btn-primary" onclick="queryByVin()">查询</button>
                 </div>
             </div>
@@ -889,6 +892,14 @@
     async function startScanner() {
         const overlay = document.getElementById('scanner-overlay');
         const video = document.getElementById('scanner-video');
+        const hintEl = document.querySelector('.scanner-hint');
+        
+        // 检查浏览器是否支持摄像头
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('您的浏览器不支持摄像头，请使用「从相册选择」功能上传图片');
+            selectFromAlbum();
+            return;
+        }
         
         try {
             stream = await navigator.mediaDevices.getUserMedia({
@@ -896,17 +907,49 @@
                     facingMode: 'environment',
                     width: { ideal: 1280 },
                     height: { ideal: 720 }
-                }
+                },
+                audio: false
             });
-            video.srcObject = stream;
-            overlay.classList.add('show');
             
-            // 预加载Tesseract.js模型（后台）
-            preloadTesseract();
+            video.srcObject = stream;
+            
+            // 等待视频流就绪
+            video.onloadedmetadata = () => {
+                video.play();
+                overlay.classList.add('show');
+                
+                // 预加载Tesseract.js模型（后台）
+                preloadTesseract();
+            };
+            
+            // 超时检测：3秒后如果视频还是黑屏，提示用户
+            setTimeout(() => {
+                if (video.readyState < 2) {  // HAVE_CURRENT_DATA
+                    console.warn('视频流可能未正常启动');
+                    hintEl.innerHTML = `
+                        <span class="hint-icon">⚠️</span>
+                        相机可能未正常启动<br>
+                        建议使用「从相册选择」功能
+                        <br><br>
+                        <button class="btn btn-scan" onclick="selectFromAlbum()" style="width: 80%; max-width: 300px; background: #ff9800;">
+                            📁 从相册选择图片
+                        </button>
+                    `;
+                }
+            }, 3000);
             
         } catch (err) {
-            alert('无法访问相机，请检查权限设置');
-            console.error(err);
+            console.error('相机访问失败:', err);
+            let errorMsg = '无法访问相机';
+            if (err.name === 'NotAllowedError') {
+                errorMsg = '相机权限被拒绝，请在浏览器设置中允许访问相机';
+            } else if (err.name === 'NotFoundError') {
+                errorMsg = '未找到可用相机设备';
+            }
+            alert(errorMsg + '\n\n您可以使用「从相册选择」功能上传VIN图片');
+            
+            // 自动切换到相册模式
+            selectFromAlbum();
         }
     }
 
@@ -1313,6 +1356,69 @@
         document.getElementById('vin-input').value = vin;
         closeScanner();
         queryByVin();
+    }
+
+    // 直接从相册选择（不进入扫描界面）
+    function selectFromAlbumDirect() {
+        document.getElementById('album-input-direct').click();
+    }
+    
+    // 处理直接相册选择的图片
+    async function handleAlbumSelectDirect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const progressEl = document.getElementById('ocr-progress');
+        const statusEl = document.getElementById('ocr-status');
+        
+        // 显示进度（在主界面显示）
+        statusEl = document.getElementById('vin-status') || statusEl;
+        
+        try {
+            // 加载图片
+            const imageUrl = URL.createObjectURL(file);
+            const img = new Image();
+            img.src = imageUrl;
+            await new Promise((resolve) => { img.onload = resolve; });
+            
+            // 显示识别状态
+            const vinInput = document.getElementById('vin-input');
+            vinInput.value = '⏳ 正在识别...';
+            
+            // 使用Tesseract.js识别
+            if (!tessaractWorker) {
+                await preloadTesseract();
+            }
+            
+            const { data: { text, confidence } } = await tessaractWorker.recognize(img);
+            
+            console.log('OCR识别结果:', text);
+            console.log('置信度:', confidence);
+            
+            // 处理识别结果
+            const vin = extractVinFromText(text);
+            
+            if (vin) {
+                vinInput.value = vin;
+                alert(`✅ 识别成功！\nVIN: ${vin}\n置信度: ${Math.round(confidence)}%`);
+            } else {
+                vinInput.value = '';
+                const possibleVin = text.replace(/[^A-HJ-NPR-Z0-9]/g, '').substring(0, 17);
+                if (possibleVin.length >= 10) {
+                    vinInput.value = possibleVin;
+                    alert(`⚠️ 未识别到完整VIN，已填入部分结果，请手动修正`);
+                } else {
+                    alert('❌ 未能识别出VIN码，请手动输入或重拍更清晰的照片');
+                }
+            }
+            
+        } catch (err) {
+            console.error('OCR识别错误:', err);
+            alert('识别失败: ' + err.message);
+            document.getElementById('vin-input').value = '';
+        }
+        
+        event.target.value = '';
     }
 
     // VIN输入自动大写
