@@ -1209,16 +1209,24 @@
             }
         }
         
-        // 第二步：针对常见OCR错误进行替换
+        // 第二步：针对常见OCR错误进行替换（VIN专用增强版）
         const ocrFixes = {
-            'N': ['L', 'M'],
-            'T': ['V', 'I'],
-            '2': ['V', 'Z'],
-            'D': ['B', 'O'],
+            // VIN最易混淆的字符对（按频率排序）
+            'W': ['V', 'M'],      // W↔V 是VIN#1混淆
+            'V': ['W', 'U', 'Y'],  // V容易被认成W/Y
+            'A': ['4', 'D'],       // A在铭牌上像4或D
+            'D': ['0', 'B', 'O'],  // D和0很像
+            'N': ['L', 'M', 'H'],  // N和L/M易混
+            'T': ['I', '7', '1'],  // T和I/1易混
+            '2': ['Z', 'V'],       // 2和Z/V
             '5': ['S', '6'],
             '8': ['B', '3'],
-            '6': ['G', 'B'],
-            '0': ['D', 'O'],
+            '6': ['G', 'B', '0'],  // 6和G/0易混
+            '0': ['D', 'O', 'Q'],
+            '1': ['I', 'L', '7'],
+            'B': ['8', 'R'],
+            'G': ['6', 'C', 'Q'],  // G和6/C/Q易混
+            'C': ['G', 'O'],
         };
         
         // 尝试生成候选VIN并验证校验位
@@ -1230,14 +1238,37 @@
             candidates.push(original);
         }
         
-        // 针对可能错误的位置生成变体
+        // 第一轮：单字符替换（快速）
         for (let i = 0; i < 17; i++) {
             const char = original[i];
             if (ocrFixes[char]) {
                 for (const replacement of ocrFixes[char]) {
                     const variant = original.substring(0, i) + replacement + original.substring(i + 1);
-                    if (validateVin(variant) && validateVinCheckDigit(variant)) {
-                        candidates.push(variant);
+                    if (validateVin(variant)) candidates.push(variant);
+                }
+            }
+        }
+        
+        // 第二轮：双字符同时替换（处理2个错误字符的情况）
+        if (candidates.length <= 1) {  // 单字符没找到有效解才做双字符
+            const positions = [];
+            for (let i = 0; i < 17; i++) {
+                if (ocrFixes[original[i]]) positions.push(i);
+            }
+            // 只对前4个最可能出错的位置做组合（避免爆炸）
+            const topPositions = positions.slice(0, 4);
+            for (let p1 = 0; p1 < topPositions.length; p1++) {
+                for (let p2 = p1 + 1; p2 < topPositions.length; p2++) {
+                    const i1 = topPositions[p1];
+                    const i2 = topPositions[p2];
+                    for (const r1 of ocrFixes[original[i1]] || []) {
+                        for (const r2 of ocrFixes[original[i2]] || []) {
+                            let arr = original.split('');
+                            arr[i1] = r1;
+                            arr[i2] = r2;
+                            const variant = arr.join('');
+                            if (validateVin(variant)) candidates.push(variant);
+                        }
                     }
                 }
             }
