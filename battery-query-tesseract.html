@@ -1041,6 +1041,15 @@
             console.log('OCR.space 识别结果:', text);
             console.log('置信度:', confidence);
             
+            // ⚠️ 置信度门槛：低于30%提示用户重拍
+            if (confidence < 30) {
+                statusEl.textContent = `⚠️ 识别质量差(${Math.round(confidence)}%)，请重拍：正对铭牌、光线充足、无反光`;
+                statusEl.style.color = '#ff6b6b';
+                document.getElementById('ocr-result').classList.add('show');
+                document.getElementById('ocr-raw-text').textContent = `原始结果: ${text}`;
+                return;  // 不继续处理低置信度结果
+            }
+            
             // 处理识别结果
             const vin = extractVinFromText(text);
             
@@ -1471,6 +1480,14 @@
             const { text, confidence } = await ocrSpaceRecognize(imageUrl);
             
             console.log('OCR.space 结果:', text, '置信度:', confidence);
+            
+            // ⚠️ 置信度门槛：低于30%提示用户重选
+            if (confidence < 30) {
+                vinInput.value = '';
+                statusEl.textContent = `⚠️ 图片模糊(${Math.round(confidence)}%)，请选择更清晰的照片`;
+                statusEl.style.color = '#ff6b6b';
+                return;
+            }
             
             const vin = extractVinFromText(text);
             
